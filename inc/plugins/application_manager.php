@@ -1,7 +1,7 @@
 <?php
 /**
- * Bewerber-Manager  - by little.evil.genius
- * https://github.com/little-evil-genius/Bewerber-Manager
+ * Bewerbungs-Manager  - by little.evil.genius
+ * https://github.com/little-evil-genius/Bewerbungs-Manager
  * https://storming-gates.de/member.php?action=profile&uid=1712
 */
 
