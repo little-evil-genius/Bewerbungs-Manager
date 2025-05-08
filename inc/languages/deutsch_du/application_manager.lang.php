@@ -6,8 +6,11 @@ $l['application_manager_checklist_fieldCheck'] = "<span class=\"application_mana
 $l['application_manager_checklist_fieldUncheck'] = "<span class=\"application_manager_checklist_fieldUncheck\">Χ</span>";
 $l['application_manager_checklist_groupCheck'] = "<span class=\"application_manager_checklist_groupCheck\">✓</span>";
 $l['application_manager_checklist_groupUncheck'] = "<span class=\"application_manager_checklist_groupUncheck\">Χ</span>";
-$l['application_manager_checklist_graphicdims'] = "({1} px)";
+$l['application_manager_checklist_graphicdims'] = "({1})";
 $l['application_manager_checklist_php'] = "({1}/{2)";
+$l['application_manager_checklist_requirement'] = "Wähle aus dem Feld <b>{1}</b> die passenden Option aus, damit du die individuellen Punkte sehen kannst.";
+$l['application_manager_checklist_requirementcheck'] = "Fülle die vorausgesetzten Punkte für <b>{1}</b> aus:";
+$l['application_manager_checklist_requirementcheck_none'] = "Es gibt keine spezifischen Punkte für <b>{1}</b>";
 $l['application_manager_checklist_deadline'] = "Deine Bewerberfrist endet am <b>{1}</b>";
 $l['application_manager_checklist_extension'] = "<span>(Du kannst noch {1}x verlängern um {2} Tage <b>{3}</b>)</span>";
 $l['application_manager_checklist_extension_endless'] = "<span>(Du kannst verlängern unendlich oft um {1} Tage <b>{2}</b>)</span>";
@@ -26,10 +29,10 @@ $l['application_manager_overview_corr_none'] = "Zur Zeit gibt es keine Bewerber:
 $l['application_manager_overview_legend_name'] = "Account";
 $l['application_manager_overview_legend_remainingDays'] = "verbleibende Tage";
 $l['application_manager_overview_legend_corrector'] = "Korrektur von";
-$l['application_manager_overview_deadline_expired'] = "<b>abgelaufen</b> ({1})";
-$l['application_manager_overview_deadline_today'] = "<b>heute</b> ({1})";
-$l['application_manager_overview_deadline_tomorrow'] = "<b>morgen</b> ({1})";
-$l['application_manager_overview_deadline_days'] = "<b>{1}</b> ({2})";
+$l['application_manager_overview_deadline_expired'] = "<b>abgelaufen</b> (bis {1})";
+$l['application_manager_overview_deadline_today'] = "<b>heute</b> ( bis {1})";
+$l['application_manager_overview_deadline_tomorrow'] = "<b>morgen</b> (bis {1})";
+$l['application_manager_overview_deadline_days'] = "<b>{1} Tage</b> (bis {2})";
 $l['application_manager_overview_extension'] = "<span class=\"application_manager_smalltext\">({1}x verlängert)</span>";
 $l['application_manager_overview_corrector_none'] = "noch nicht übernommen {1}";
 $l['application_manager_overview_correction_startDate'] = "seit {1}";
