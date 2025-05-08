@@ -90,6 +90,24 @@ Dadurch sieht die Person im Bewerbungsprozess nur die Punkte, die für ihre Ausw
 ### Hinweis!
 Die Checkliste lässt sich <b>problemlos</b> mit dem <a href="https://github.com/katjalennartz/application_ucp" target="_blank">Steckbriefe im UCP von risuena</a> kombinieren.
 
+## Automatisches WoB-Tool
+Das automatische WoB-Tool ("Welcome on Board") ermöglicht es, Bewerber:innen mit nur einem Klick anzunehmen.<br>
+Das WoB-Tool wird am Ende des Bewerbungsthemas (Showthread) angezeigt. Wenn für eine Bewerbung bereits ein bestimmtes Teammitglied fest zugewiesen wurde, ist das Tool nur für dieses Teammitglied sichtbar. Ist kein Teammitglied festgelegt, können alle Teammitglieder mit den entsprechenden Rechten das Tool sehen und verwenden.<br>
+<br>
+<b>Folgende Funktionen stehen zur Verfügung:</b>
+- <b>Benutzergruppen ändern:</b> Beim WoB-Vorgang wird die primäre Benutzergruppe des Accounts automatisch von der Bewerbungsgruppe auf die eingestellte Zielgruppe für angenommene Accounts gewechselt. Zusätzlich können bei Bedarf auch sekundäre Gruppen automatisch angepasst werden.
+- </b>Automatische Antwort posten:</b> Optional kann beim WoB automatisch eine Antwort im Bewerbungsthema gepostet werden.<br>
+
+Hier gibt es zwei Varianten:<br>
+1. Ein fester, in den Einstellungen definierter Text wird direkt gepostet.<br>
+2. Ein vorgefertigter Text, den das Teammitglied vor dem Posten noch bearbeiten kann - so bleibt Flexibilität, um z.B. individuelle Grüße oder Hinweise hinzuzufügen.<br>
+
+<b>WoB-Datum speichern:</b><br>
+Es besteht die Möglichkeit, eine Spalte in der users-Tabelle anzugeben, in der das Datum des WoB-Eintrags gespeichert wird. So kann jederzeit nachvollzogen werden, wann der Account angenommen wurde.
+
+### Hinweis!
+Das WoB-Tool ist nicht kompatibel mit dem <a href="https://github.com/katjalennartz/application_ucp" target="_blank">Steckbriefe im UCP von risuena</a>.
+
 # Vorrausetzung
 - Das ACP Modul <a href="https://github.com/little-evil-genius/rpgstuff_modul" target="_blank">RPG Stuff</a> <b>muss</b> vorhanden sein.
 - Der <a href="https://doylecc.altervista.org/bb/downloads.php?dlid=26&cat=2" target="_blank">Accountswitcher</a> von doylecc <b>muss</b> installiert sein.
