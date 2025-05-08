@@ -197,7 +197,7 @@ function application_manager_activate(){
     // VARIABLEN EINFÜGEN
     find_replace_templatesets('forumdisplay_thread', '#'.preg_quote('{$thread[\'multipage\']}').'#', '{$applicationPlus} {$thread[\'multipage\']}');
     find_replace_templatesets('forumdisplay_thread', '#'.preg_quote('{$thread[\'profilelink\']}').'#', '{$application_corrector}{$thread[\'profilelink\']}');
-    find_replace_templatesets('header', '#'.preg_quote('{$awaitingusers}').'#', '{$awaitingusers} {$application_checklist}{$application_openAlert}{$application_team_reminder}{$application_deadline_reminder}');
+    find_replace_templatesets('header', '#'.preg_quote('{$awaitingusers}').'#', '{$awaitingusers} {$application_checklist}{$application_checklist_banner}{$application_openAlert}{$application_team_reminder}{$application_deadline_reminder}');
     find_replace_templatesets('newreply', '#'.preg_quote('<input type="submit" class="button" name="submit').'#', '{$application_correction} <input type="submit" class="button" name="submit"');
     find_replace_templatesets('showthread', '#<tr>\s*<td class="tfoot">#', '{$application_wob}<tr><td class="tfoot">');
     find_replace_templatesets('showthread', '#'.preg_quote('{$thread[\'subject\']}').'#', '{$thread[\'subject\']}{$application_corrector}');
@@ -215,6 +215,7 @@ function application_manager_deactivate(){
 	find_replace_templatesets("forumdisplay_thread", "#".preg_quote('{$applicationPlus}')."#i", '', 0);
 	find_replace_templatesets("forumdisplay_thread", "#".preg_quote('{$application_corrector}')."#i", '', 0);
 	find_replace_templatesets("header", "#".preg_quote('{$application_checklist}')."#i", '', 0);
+	find_replace_templatesets("header", "#".preg_quote('{$application_checklist_banner}')."#i", '', 0);
 	find_replace_templatesets("header", "#".preg_quote('{$application_openAlert}')."#i", '', 0);
 	find_replace_templatesets("header", "#".preg_quote('{$application_team_reminder}')."#i", '', 0);
 	find_replace_templatesets("header", "#".preg_quote('{$application_deadline_reminder}')."#i", '', 0);
@@ -243,6 +244,7 @@ function application_manager_settings_peek(&$peekers){
     global $application_manager_settings_peeker;
 
     if ($application_manager_settings_peeker) {
+        $peekers[] = 'new Peeker($(".setting_application_manager_checklist"), $("#row_setting_application_manager_checklist_hidden"),/1/,true)';
         $peekers[] = 'new Peeker($(".setting_application_manager_control"), $("#row_setting_application_manager_control_period, #row_setting_application_manager_control_period_extension, #row_setting_application_manager_control_period_extension_days, #row_setting_application_manager_control_period_extension_max, #row_setting_application_manager_control_period_alert, #row_setting_application_manager_control_period_visible, #row_setting_application_manager_control_correction, #row_setting_application_manager_control_correction_days, #row_setting_application_manager_control_correction_extension, #row_setting_application_manager_control_correction_extension_days, #row_setting_application_manager_control_correction_extension_max, #row_setting_application_manager_control_correction_alert, #row_setting_application_manager_control_correction_visible, #row_setting_application_manager_control_team_alert"),/1/,true)'; 
         $peekers[] = 'new Peeker($(".setting_application_manager_control_correction"), $("#row_setting_application_manager_control_correction_days, #row_setting_application_manager_control_correction_extension, #row_setting_application_manager_control_correction_extension_days, #row_setting_application_manager_control_correction_extension_max, #row_setting_application_manager_control_correction_visible, #row_setting_application_manager_control_correction_alert"),/1/,true)'; 
         
@@ -2247,11 +2249,12 @@ function application_manager_admin_update_plugin(&$table) {
 // CHECKLIST //
 function application_manager_checklist() {
 
-    global $db, $mybb, $lang, $templates, $application_checklist;
+    global $db, $mybb, $lang, $templates, $application_checklist, $application_checklist_banner;
 
     // EINSTELLUNGEN
     $applicationgroup = $mybb->settings['application_manager_applicationgroup'];
     $checklist_setting = $mybb->settings['application_manager_checklist'];
+    $checklist_hidden = $mybb->settings['application_manager_checklist_hidden'];
     $applicationforum = $mybb->settings['application_manager_applicationforum'];
     $control_setting = $mybb->settings['application_manager_control'];
     $period_extension = $mybb->settings['application_manager_control_period_extension'];
@@ -2260,11 +2263,13 @@ function application_manager_checklist() {
 
     if ($checklist_setting == 0) {
         $application_checklist = "";
+        $application_checklist_banner = "";
         return;
     }
 
     if (!is_member($applicationgroup)) {
         $application_checklist = "";
+        $application_checklist_banner = "";
         return;
     }
 
@@ -2274,9 +2279,8 @@ function application_manager_checklist() {
     $accountID = $mybb->user['uid'];
     $checkApplication = $db->fetch_field($db->simple_select("threads", "tid" ,"fid = ".$applicationforum." AND uid = '".$accountID."'"), "tid");
 
-    // Bewerber mit eingereichter Bewerbung => Banner | keine Checklist
+    // Eingereichte Bewerbung => Banner
     if (!empty($checkApplication)) {
-
         // Mit Bewerberübersichtskram
         if ($control_setting == 1) {
             $correctorUID = $db->fetch_field($db->simple_select("application_manager", "corrector" ,"uid = '".$accountID."'"), "corrector");
@@ -2290,368 +2294,375 @@ function application_manager_checklist() {
             // Leer laufen lassen
             $bannerText = $lang->application_manager_checklist_banner;
         }
-        eval("\$application_checklist = \"".$templates->get("applicationmanager_checklist_banner")."\";");
-    } 
-    // Checklist
+        eval("\$application_checklist_banner = \"".$templates->get("applicationmanager_checklist_banner")."\";");
+    }
     else {
+        $application_checklist_banner = "";
+    }
 
-        require_once MYBB_ROOT."inc/class_parser.php";
-        $parser = new postParser;
-        $parser_array = array(
-            "allow_html" => 1,
-            "allow_mycode" => 1,
-            "allow_smilies" => 1,
-            "allow_imgcode" => 0,
-            "filter_badwords" => 0,
-            "nl2br" => 1,
-            "allow_videocode" => 0
-        );
-    
-        $query_groups = $db->query("SELECT * FROM ".TABLE_PREFIX."application_checklist_groups cg 
-        ORDER BY disporder ASC, title ASC
-        ");
-    
-        $checklist_groups = "";
-        while ($group = $db->fetch_array($query_groups)) {
-    
-            // Leer laufen lassen 
-            $gid = "";
-            $title = "";
-            $description = "";
-            $disporder = "";
-            $comma = "";
-            $requirement = "";
-            $ignor_option = "";
-            $requirementcheck = "";
-    
-            // Mit Infos füllen
-            $gid = $group['gid'];
-            $title = $group['title'];
-            $description = $parser->parse_message($group['description'], $parser_array);
-            $disporder = $group['disporder'];
-            $requirement = $group['requirement'];
-            $ignor_option = $group['ignor_option'];
+    // Bewerber mit eingereichter Bewerbung -> keine Checklist
+    if (!empty($checkApplication) && $checklist_hidden == 1) {
+        $application_checklist = "";
+        return;
+    }
+     
+    // Checklist
+    require_once MYBB_ROOT."inc/class_parser.php";
+    $parser = new postParser;
+    $parser_array = array(
+        "allow_html" => 1,
+        "allow_mycode" => 1,
+        "allow_smilies" => 1,
+        "allow_imgcode" => 0,
+        "filter_badwords" => 0,
+        "nl2br" => 1,
+        "allow_videocode" => 0
+    );
 
-            // Gruppe ist spezifisch
-            if(!empty($requirement)) {
-                // Profilfeld
-                if (is_numeric($requirement)) {
-                    $profileFID = "fid".$requirement;
-                    $requirementCheck = $db->fetch_field($db->simple_select("userfields", $profileFID, "ufid = ".$accountID.""), $profileFID);
-                    $fieldname = $db->fetch_field($db->simple_select("profilefields", "name", "fid = ".$requirement.""), "name");
+    $query_groups = $db->query("SELECT * FROM ".TABLE_PREFIX."application_checklist_groups cg 
+    ORDER BY disporder ASC, title ASC
+    ");
 
-                    // ignorierende Angaben beachten
-                    if (!empty($ignor_option)) {
-                        $expoptions = application_manager_ignoroptions('profile', $requirement, $ignor_option);
-    
-                        if (in_array($requirementCheck, $expoptions)) {
-                            $requirementcheck = $requirementCheck;
-                        } else {
-                            $requirementcheck = "";
-                        }
-                    } 
-                    // nur überprüfen, ob ausgefüllt
-                    else {
-                        if(!empty($requirementCheck)) {
-                            $requirementcheck = $requirementCheck;
-                        } else {
-                            $requirementcheck = "";
-                        }
+    $checklist_groups = "";
+    while ($group = $db->fetch_array($query_groups)) {
+
+        // Leer laufen lassen 
+        $gid = "";
+        $title = "";
+        $description = "";
+        $disporder = "";
+        $comma = "";
+        $requirement = "";
+        $ignor_option = "";
+        $requirementcheck = "";
+
+        // Mit Infos füllen
+        $gid = $group['gid'];
+        $title = $group['title'];
+        $description = $parser->parse_message($group['description'], $parser_array);
+        $disporder = $group['disporder'];
+        $requirement = $group['requirement'];
+        $ignor_option = $group['ignor_option'];
+
+        // Gruppe ist spezifisch
+        if(!empty($requirement)) {
+            // Profilfeld
+            if (is_numeric($requirement)) {
+                $profileFID = "fid".$requirement;
+                $requirementCheck = $db->fetch_field($db->simple_select("userfields", $profileFID, "ufid = ".$accountID.""), $profileFID);
+                $fieldname = $db->fetch_field($db->simple_select("profilefields", "name", "fid = ".$requirement.""), "name");
+
+                // ignorierende Angaben beachten
+                if (!empty($ignor_option)) {
+                    $expoptions = application_manager_ignoroptions('profile', $requirement, $ignor_option);
+
+                    if (in_array($requirementCheck, $expoptions)) {
+                        $requirementcheck = $requirementCheck;
+                    } else {
+                        $requirementcheck = "";
                     }
-                }
-                // Steckifeld
+                } 
+                // nur überprüfen, ob ausgefüllt
                 else {
-                    $fieldid = $db->fetch_field($db->simple_select("application_ucp_fields", "id", "fieldname = '".$requirement."'"), "id");
-                    $requirementCheck = $db->fetch_field($db->simple_select("application_ucp_userfields", "value", "uid = ".$accountID." AND fieldid = ".$fieldid.""), "value");
-                    $fieldname = $db->fetch_field($db->simple_select("application_ucp_fields", "label", "id = ".$fieldid.""), "label");
-
-                    // ignorierende Angaben beachten
-                    if (!empty($ignor_option)) {
-                        $expoptions = application_manager_ignoroptions('application', $fieldID, $ignor_option);
-
-                        if (in_array($requirementCheck, $expoptions)) {
-                            $requirementcheck = $requirementCheck;
-                        } else {
-                            $requirementcheck = "";
-                        }
-                    } 
-                    // nur überprüfen, ob ausgefüllt
-                    else {
-                        if(!empty($requirementCheck)) {
-                            $requirementcheck = $requirementCheck;
-                        } else {
-                            $requirementcheck = "";
-                        }
+                    if(!empty($requirementCheck)) {
+                        $requirementcheck = $requirementCheck;
+                    } else {
+                        $requirementcheck = "";
                     }
                 }
-            } else {
-                $requirementcheck = "";
             }
-
-            // Punkte - spezifisch nach Auswahl
-            if(!empty($requirementcheck)) {
-                $query_fields = $db->query("SELECT * FROM ".TABLE_PREFIX."application_checklist_fields cf
-                WHERE gid = ".$gid."
-                AND field_condition = '".$requirementcheck."'
-                ORDER BY disporder ASC, title ASC
-                ");
-            } 
-            // Alle Punkte für die Gruppe
+            // Steckifeld
             else {
-                $query_fields = $db->query("SELECT * FROM ".TABLE_PREFIX."application_checklist_fields cf
-                WHERE gid = ".$gid."
-                ORDER BY disporder ASC, title ASC
-                ");
+                $fieldid = $db->fetch_field($db->simple_select("application_ucp_fields", "id", "fieldname = '".$requirement."'"), "id");
+                $requirementCheck = $db->fetch_field($db->simple_select("application_ucp_userfields", "value", "uid = ".$accountID." AND fieldid = ".$fieldid.""), "value");
+                $fieldname = $db->fetch_field($db->simple_select("application_ucp_fields", "label", "id = ".$fieldid.""), "label");
+
+                // ignorierende Angaben beachten
+                if (!empty($ignor_option)) {
+                    $expoptions = application_manager_ignoroptions('application', $fieldID, $ignor_option);
+
+                    if (in_array($requirementCheck, $expoptions)) {
+                        $requirementcheck = $requirementCheck;
+                    } else {
+                        $requirementcheck = "";
+                    }
+                } 
+                // nur überprüfen, ob ausgefüllt
+                else {
+                    if(!empty($requirementCheck)) {
+                        $requirementcheck = $requirementCheck;
+                    } else {
+                        $requirementcheck = "";
+                    }
+                }
             }
-    
-            $pointcounter = 0;
-            $checkcounter = 0;
-            $checklist_points = "";
-            while ($field = $db->fetch_array($query_fields)) {
-                $pointcounter++;
-    
-                // Leer laufen lassen
-                $fid = "";
-                $gid_field = "";
-                $pointname = "";
-                $disporder_field = "";
-                $data_field = "";
-                $fieldID = "";
-                $ignor_option = "";
-                $pointstatus = "";
-                $extrainformation = "";
-    
-                // Mit Infos füllen
-                $fid_field = $field['fid'];
-                $gid_field = $field['gid'];
-                $pointname = $field['title'];
-                $disporder_field = $field['disporder'];
-                $data_field = $field['data'];
-                $fieldID = $field['field'];
-                $ignor_option = $field['ignor_option'];
-    
-                // STATUS
-                // Profilfeld
-                if ($data_field == "profile") {
+        } else {
+            $requirementcheck = "";
+        }
 
-                    $profileFID = "fid".$fieldID;
-                    $fieldcheck = $db->fetch_field($db->simple_select("userfields", $profileFID, "ufid = ".$accountID.""), $profileFID);
+        // Punkte - spezifisch nach Auswahl
+        if(!empty($requirementcheck)) {
+            $query_fields = $db->query("SELECT * FROM ".TABLE_PREFIX."application_checklist_fields cf
+            WHERE gid = ".$gid."
+            AND field_condition = '".$requirementcheck."'
+            ORDER BY disporder ASC, title ASC
+            ");
+        } 
+        // Alle Punkte für die Gruppe
+        else {
+            $query_fields = $db->query("SELECT * FROM ".TABLE_PREFIX."application_checklist_fields cf
+            WHERE gid = ".$gid."
+            ORDER BY disporder ASC, title ASC
+            ");
+        }
 
-                    // ignorierende Angaben beachten
-                    if (!empty($ignor_option)) {
-                        $expoptions = application_manager_ignoroptions('profile', $requirement, $ignor_option);
+        $pointcounter = 0;
+        $checkcounter = 0;
+        $checklist_points = "";
+        while ($field = $db->fetch_array($query_fields)) {
+            $pointcounter++;
 
-                        if (in_array($fieldcheck, $expoptions)) {
-                            $pointstatus = $lang->application_manager_checklist_fieldCheck;
-                            $checkcounter++;
-                        } else {
-                            $pointstatus = $lang->application_manager_checklist_fieldUncheck;
-                        }
-                    } 
-                    // nur überprüfen, ob ausgefüllt
-                    else {
-                        if(!empty($fieldcheck)) {
-                            $pointstatus = $lang->application_manager_checklist_fieldCheck;
-                            $checkcounter++;
-                        } else {
-                            $pointstatus = $lang->application_manager_checklist_fieldUncheck;
-                        }
-                    }
-                }
-                // Steckifeld
-                else if ($data_field == "application") {
+            // Leer laufen lassen
+            $fid = "";
+            $gid_field = "";
+            $pointname = "";
+            $disporder_field = "";
+            $data_field = "";
+            $fieldID = "";
+            $ignor_option = "";
+            $pointstatus = "";
+            $extrainformation = "";
 
-                    $fieldid = $db->fetch_field($db->simple_select("application_ucp_fields", "id", "fieldname = '".$fieldID."'"), "id");
-                    $fieldcheck = $db->fetch_field($db->simple_select("application_ucp_userfields", "value", "uid = ".$accountID." AND fieldid = ".$fieldid.""), "value");
+            // Mit Infos füllen
+            $fid_field = $field['fid'];
+            $gid_field = $field['gid'];
+            $pointname = $field['title'];
+            $disporder_field = $field['disporder'];
+            $data_field = $field['data'];
+            $fieldID = $field['field'];
+            $ignor_option = $field['ignor_option'];
 
-                    // ignorierende Angaben beachten
-                    if (!empty($ignor_option)) {
-                        $expoptions = application_manager_ignoroptions('application', $fieldID, $ignor_option);
-
-                        if (in_array($fieldcheck, $expoptions)) {
-                            $pointstatus = $lang->application_manager_checklist_fieldCheck;
-                            $checkcounter++;
-                        } else {
-                            $pointstatus = $lang->application_manager_checklist_fieldUncheck;
-                        }
-                    } 
-                    // nur überprüfen, ob ausgefüllt
-                    else {
-                        if(!empty($fieldcheck)) {
-                            $pointstatus = $lang->application_manager_checklist_fieldCheck;
-                            $checkcounter++;
-                        } else {
-                            $pointstatus = $lang->application_manager_checklist_fieldUncheck;
-                        }
-                    }
-                }
-                // Geburtstagsfeld
-                else if ($data_field == "birthday") {
-                    $fieldcheck = $db->fetch_field($db->simple_select("users", "birthday", "uid = ".$accountID.""), "birthday");
-    
-                    if(!empty($fieldcheck)) {
-                        $pointstatus = $lang->application_manager_checklist_fieldCheck;
-                        $checkcounter++;
-                    } else {
-                        $pointstatus = $lang->application_manager_checklist_fieldUncheck;
-                    }
-                }
-                // Avatar
-                else if ($data_field == "avatar") {
-    
-                    // Größenangaben
-                    $extrainformation = $lang->sprintf($lang->application_manager_checklist_graphicdims, $mybb->settings['useravatardims']);
-    
-                    $fieldcheck = $db->fetch_field($db->simple_select("users", "avatar", "uid = ".$accountID.""), "avatar");
-    
-                    if(!empty($fieldcheck)) {
-                        $pointstatus = $lang->application_manager_checklist_fieldCheck;
-                        $checkcounter++;
-                    } else {
-                        $pointstatus = $lang->application_manager_checklist_fieldUncheck;
-                    }
-                }
-                // Uploadelement
-                else if ($data_field == "upload") {
-    
-                    // Größenangaben
-                    $size_query = $db->simple_select("uploadsystem", "mindims, maxdims", "identification = '".$fieldID."'");
-                    $size = $db->fetch_array($size_query);
-    
-                    if (!empty($size['maxdims'])) {
-                        $extrainformation = $lang->sprintf($lang->application_manager_checklist_graphicdims, $size['maxdims']);
-                    } else {
-                        $extrainformation = $lang->sprintf($lang->application_manager_checklist_graphicdims, $size['mindims']);
-                    }
-    
-                    $fieldcheck = $db->fetch_field($db->simple_select("uploadfiles", $fieldID, "ufid = ".$accountID.""), $fieldID);
-    
-                    if(!empty($fieldcheck)) {
-                        $pointstatus = $lang->application_manager_checklist_fieldCheck;
-                        $checkcounter++;
-                    } else {
-                        $pointstatus = $lang->application_manager_checklist_fieldUncheck;
-                    }
-                }
-                // PHP Kram
-                else if ($data_field == "php") {
-    
-                    $datainfos = explode(";", $fieldID);
-                    $datebase = $datainfos['0'];
-                    $datauid = $datainfos['1'];
-                    $datacolumn = $datainfos['2'];
-                    $datacount = $datainfos['3'];
-    
-                    // Mehrfach überprüfen
-                    if($datacount > 1) {
-    
-                        $query_php = $db->query("SELECT * FROM ".TABLE_PREFIX."".$datebase."
-                        WHERE ".$datauid." = ".$accountID."
-                        ");
-    
-                        $datacounter = 0;
-                        while ($php = $db->fetch_array($query_php)) {
-    
-                            if (!empty($php[$datacolumn])){
-                                $datacounter++;
-                            }
-                        }
-    
-                        $extrainformation = $lang->sprintf($lang->application_manager_checklist_graphicdims, $datacounter, $datacount);
-    
-                        if($datacounter >= $datacount) {
-                            $pointstatus = $lang->application_manager_checklist_fieldCheck;
-                            $checkcounter++;
-                        } else {
-                            $pointstatus = $lang->application_manager_checklist_fieldUncheck;
-                        }
-                    } else {
-                        
-                        $fieldcheck = $db->fetch_field($db->simple_select($datebase, $datacolumn, $datauid." = ".$accountID.""), $datacolumn);
-    
-                        if(!empty($fieldcheck)) {
-                            $pointstatus = $lang->application_manager_checklist_fieldCheck;
-                            $checkcounter++;
-                        } else {
-                            $pointstatus = $lang->application_manager_checklist_fieldUncheck;
-                        }
-                    }
-                }
-    
-                eval("\$checklist_points .= \"".$templates->get("applicationmanager_checklist_points")."\";");
-            }
-    
             // STATUS
-            if ($checkcounter >= $pointcounter) {
-                $group_status = $lang->application_manager_checklist_groupCheck;
+            // Profilfeld
+            if ($data_field == "profile") {
+
+                $profileFID = "fid".$fieldID;
+                $fieldcheck = $db->fetch_field($db->simple_select("userfields", $profileFID, "ufid = ".$accountID.""), $profileFID);
+
+                // ignorierende Angaben beachten
+                if (!empty($ignor_option)) {
+                    $expoptions = application_manager_ignoroptions('profile', $requirement, $ignor_option);
+
+                    if (in_array($fieldcheck, $expoptions)) {
+                        $pointstatus = $lang->application_manager_checklist_fieldCheck;
+                        $checkcounter++;
+                    } else {
+                        $pointstatus = $lang->application_manager_checklist_fieldUncheck;
+                    }
+                } 
+                // nur überprüfen, ob ausgefüllt
+                else {
+                    if(!empty($fieldcheck)) {
+                        $pointstatus = $lang->application_manager_checklist_fieldCheck;
+                        $checkcounter++;
+                    } else {
+                        $pointstatus = $lang->application_manager_checklist_fieldUncheck;
+                    }
+                }
+            }
+            // Steckifeld
+            else if ($data_field == "application") {
+
+                $fieldid = $db->fetch_field($db->simple_select("application_ucp_fields", "id", "fieldname = '".$fieldID."'"), "id");
+                $fieldcheck = $db->fetch_field($db->simple_select("application_ucp_userfields", "value", "uid = ".$accountID." AND fieldid = ".$fieldid.""), "value");
+
+                // ignorierende Angaben beachten
+                if (!empty($ignor_option)) {
+                    $expoptions = application_manager_ignoroptions('application', $fieldID, $ignor_option);
+
+                    if (in_array($fieldcheck, $expoptions)) {
+                        $pointstatus = $lang->application_manager_checklist_fieldCheck;
+                        $checkcounter++;
+                    } else {
+                        $pointstatus = $lang->application_manager_checklist_fieldUncheck;
+                    }
+                } 
+                // nur überprüfen, ob ausgefüllt
+                else {
+                    if(!empty($fieldcheck)) {
+                        $pointstatus = $lang->application_manager_checklist_fieldCheck;
+                        $checkcounter++;
+                    } else {
+                        $pointstatus = $lang->application_manager_checklist_fieldUncheck;
+                    }
+                }
+            }
+            // Geburtstagsfeld
+            else if ($data_field == "birthday") {
+                $fieldcheck = $db->fetch_field($db->simple_select("users", "birthday", "uid = ".$accountID.""), "birthday");
+
+                if(!empty($fieldcheck)) {
+                    $pointstatus = $lang->application_manager_checklist_fieldCheck;
+                    $checkcounter++;
+                } else {
+                    $pointstatus = $lang->application_manager_checklist_fieldUncheck;
+                }
+            }
+            // Avatar
+            else if ($data_field == "avatar") {
+
+                // Größenangaben
+                $extrainformation = $lang->sprintf($lang->application_manager_checklist_graphicdims, $mybb->settings['useravatardims']);
+
+                $fieldcheck = $db->fetch_field($db->simple_select("users", "avatar", "uid = ".$accountID.""), "avatar");
+
+                if(!empty($fieldcheck)) {
+                    $pointstatus = $lang->application_manager_checklist_fieldCheck;
+                    $checkcounter++;
+                } else {
+                    $pointstatus = $lang->application_manager_checklist_fieldUncheck;
+                }
+            }
+            // Uploadelement
+            else if ($data_field == "upload") {
+
+                // Größenangaben
+                $size_query = $db->simple_select("uploadsystem", "mindims, maxdims", "identification = '".$fieldID."'");
+                $size = $db->fetch_array($size_query);
+
+                if (!empty($size['maxdims'])) {
+                    $extrainformation = $lang->sprintf($lang->application_manager_checklist_graphicdims, $size['maxdims']);
+                } else {
+                    $extrainformation = $lang->sprintf($lang->application_manager_checklist_graphicdims, $size['mindims']);
+                }
+
+                $fieldcheck = $db->fetch_field($db->simple_select("uploadfiles", $fieldID, "ufid = ".$accountID.""), $fieldID);
+
+                if(!empty($fieldcheck)) {
+                    $pointstatus = $lang->application_manager_checklist_fieldCheck;
+                    $checkcounter++;
+                } else {
+                    $pointstatus = $lang->application_manager_checklist_fieldUncheck;
+                }
+            }
+            // PHP Kram
+            else if ($data_field == "php") {
+
+                $datainfos = explode(";", $fieldID);
+                $datebase = $datainfos['0'];
+                $datauid = $datainfos['1'];
+                $datacolumn = $datainfos['2'];
+                $datacount = $datainfos['3'];
+
+                // Mehrfach überprüfen
+                if($datacount > 1) {
+
+                    $query_php = $db->query("SELECT * FROM ".TABLE_PREFIX."".$datebase."
+                    WHERE ".$datauid." = ".$accountID."
+                    ");
+
+                    $datacounter = 0;
+                    while ($php = $db->fetch_array($query_php)) {
+
+                        if (!empty($php[$datacolumn])){
+                            $datacounter++;
+                        }
+                    }
+
+                    $extrainformation = $lang->sprintf($lang->application_manager_checklist_graphicdims, $datacounter, $datacount);
+
+                    if($datacounter >= $datacount) {
+                        $pointstatus = $lang->application_manager_checklist_fieldCheck;
+                        $checkcounter++;
+                    } else {
+                        $pointstatus = $lang->application_manager_checklist_fieldUncheck;
+                    }
+                } else {
+                    
+                    $fieldcheck = $db->fetch_field($db->simple_select($datebase, $datacolumn, $datauid." = ".$accountID.""), $datacolumn);
+
+                    if(!empty($fieldcheck)) {
+                        $pointstatus = $lang->application_manager_checklist_fieldCheck;
+                        $checkcounter++;
+                    } else {
+                        $pointstatus = $lang->application_manager_checklist_fieldUncheck;
+                    }
+                }
+            }
+
+            eval("\$checklist_points .= \"".$templates->get("applicationmanager_checklist_points")."\";");
+        }
+
+        // STATUS
+        if ($checkcounter >= $pointcounter) {
+            $group_status = $lang->application_manager_checklist_groupCheck;
+        } else {
+            $group_status = $lang->application_manager_checklist_groupUncheck;
+        }
+
+        if (!empty($requirementcheck)) {
+            // keine spezifischen Punkte für diese Auswah
+            if(empty($checklist_points)) {
+                $description = $lang->sprintf($lang->application_manager_checklist_requirementcheck_none, $requirementcheck);
             } else {
+                $description = $lang->sprintf($lang->application_manager_checklist_requirementcheck, $requirementcheck);
+            }
+        } else {
+            if(!empty($requirement)) {
+                $checklist_points = $lang->sprintf($lang->application_manager_checklist_requirement, $fieldname);
                 $group_status = $lang->application_manager_checklist_groupUncheck;
             }
-
-            if (!empty($requirementcheck)) {
-                // keine spezifischen Punkte für diese Auswah
-                if(empty($checklist_points)) {
-                    $description = $lang->sprintf($lang->application_manager_checklist_requirementcheck_none, $requirementcheck);
-                } else {
-                    $description = $lang->sprintf($lang->application_manager_checklist_requirementcheck, $requirementcheck);
-                }
-            } else {
-                if(!empty($requirement)) {
-                    $checklist_points = $lang->sprintf($lang->application_manager_checklist_requirement, $fieldname);
-                    $group_status = $lang->application_manager_checklist_groupUncheck;
-                }
-            }
-    
-            if (!empty($description)) {
-                $comma = $lang->application_manager_checklist_comma;
-            } else {
-                $comma = "";
-            }
-    
-            eval("\$checklist_groups .= \"".$templates->get("applicationmanager_checklist_group")."\";");
         }
 
-        // Bewerberfristenkram anzeigen
-        if ($control_setting == 1) {
-
-            $today = new DateTime();
-            $today->setTime(0, 0, 0);
-    
-            // Bewerberfrist-Kram
-            $application_query = $db->simple_select("application_manager", "*", "uid = '".$accountID."'");
-            $application = $db->fetch_array($application_query);
-
-            $deadline = new DateTime($application['application_deadline']);
-            $deadline->setTime(0, 0, 0);
-            $EndDate = $deadline->format('d.m.Y');
-    
-            $application_deadline = $lang->sprintf($lang->application_manager_checklist_deadline, $EndDate);
-
-            if ($period_extension_days != 0 && $period_extension == 1 && $deadline >= $today) {
-                // noch Verlängerungen möglich
-                if ($period_extension_max == 0 || $application['application_extension_count'] < $period_extension_max) {
-                    $extensionPlus = "<a href=\"misc.php?action=application_manager_period_update&aid=".$application['aid']."\">".$lang->application_manager_plus."</a>";
-                    // Unendlich verlängern
-                    if ($period_extension_max == 0) {
-                        $headlineText = $application_deadline." ".$lang->sprintf($lang->application_manager_checklist_extension_endless, $period_extension_days, $extensionPlus);
-                    } else {
-                        $restExtension = $period_extension_max - $application['application_extension_count'];
-                        $headlineText = $application_deadline." ".$lang->sprintf($lang->application_manager_checklist_extension, $restExtension, $period_extension_days, $extensionPlus);
-                    }
-                } else {
-                    $headlineText = $application_deadline." ".$lang->application_manager_checklist_extension_none;
-                }
-            } else {
-                $headlineText = $application_deadline;
-            }
+        if (!empty($description)) {
+            $comma = $lang->application_manager_checklist_comma;
+        } else {
+            $comma = "";
         }
-        // normale Headline
-        else {
-            $headlineText = $lang->application_manager_checklist;
-        }
-    
-        eval("\$application_checklist = \"".$templates->get("applicationmanager_checklist")."\";");
+
+        eval("\$checklist_groups .= \"".$templates->get("applicationmanager_checklist_group")."\";");
     }
+
+    // Bewerberfristenkram anzeigen
+    if ($control_setting == 1) {
+
+        $today = new DateTime();
+        $today->setTime(0, 0, 0);
+
+        // Bewerberfrist-Kram
+        $application_query = $db->simple_select("application_manager", "*", "uid = '".$accountID."'");
+        $application = $db->fetch_array($application_query);
+
+        $deadline = new DateTime($application['application_deadline']);
+        $deadline->setTime(0, 0, 0);
+        $EndDate = $deadline->format('d.m.Y');
+
+        $application_deadline = $lang->sprintf($lang->application_manager_checklist_deadline, $EndDate);
+
+        if ($period_extension_days != 0 && $period_extension == 1 && $deadline >= $today) {
+            // noch Verlängerungen möglich
+            if ($period_extension_max == 0 || $application['application_extension_count'] < $period_extension_max) {
+                $extensionPlus = "<a href=\"misc.php?action=application_manager_period_update&aid=".$application['aid']."\">".$lang->application_manager_plus."</a>";
+                // Unendlich verlängern
+                if ($period_extension_max == 0) {
+                    $headlineText = $application_deadline." ".$lang->sprintf($lang->application_manager_checklist_extension_endless, $period_extension_days, $extensionPlus);
+                } else {
+                    $restExtension = $period_extension_max - $application['application_extension_count'];
+                    $headlineText = $application_deadline." ".$lang->sprintf($lang->application_manager_checklist_extension, $restExtension, $period_extension_days, $extensionPlus);
+                }
+            } else {
+                $headlineText = $application_deadline." ".$lang->application_manager_checklist_extension_none;
+            }
+        } else {
+            $headlineText = $application_deadline;
+        }
+    }
+    // normale Headline
+    else {
+        $headlineText = $lang->application_manager_checklist;
+    }
+
+    eval("\$application_checklist = \"".$templates->get("applicationmanager_checklist")."\";");
 }
 
 // BEWERBERÜBERSICHT //
@@ -4656,152 +4667,159 @@ function application_manager_settings($type = 'install') {
             'value' => '0', // Default
             'disporder' => 6
 		),
+		'application_manager_checklist_hidden' => array(
+			'title' => 'Checkliste verstecken',
+            'description' => 'Soll die Checkliste durch ein Hinweisbanner ersetzt werden, wenn eine Bewerbung gepostet wurde?',
+            'optionscode' => 'yesno',
+            'value' => '0', // Default
+            'disporder' => 7
+		),
         'application_manager_control' => array(
             'title' => 'Bewerbungsfristen',
             'description' => 'Soll es eine Übersicht und die Möglichkeit zur Fristenverwaltung für Bewerber:innen geben?',
             'optionscode' => 'yesno',
             'value' => '0', // Default
-            'disporder' => 7
+            'disporder' => 8
         ),
         'application_manager_control_period' => array(
             'title' => 'Bewerbungszeitraum',
             'description' => 'Wie viele Tage haben Bewerber:innen Zeit, eine Bewerbung einzureichen?',
             'optionscode' => 'numeric',
             'value' => '0', // Default
-            'disporder' => 8
+            'disporder' => 9
         ),
         'application_manager_control_period_extension_days' => array(
             'title' => 'Verlängerungszeitraum der Bewerbung',
             'description' => 'Um wie viele Tage jeweils wird der Bewerbungszeitrum verlängert? 0 deaktiviert diese Funktion.',
             'optionscode' => 'numeric',
             'value' => '0', // Default
-            'disporder' => 9
+            'disporder' => 10
         ),
         'application_manager_control_period_extension_max' => array(
             'title' => 'Maximale Anzahl der Verlängerungen der Bewerbungsfrist',
             'description' => 'Wie oft darf die Bewerbungsfrist verlängert werden? Bei 0 ist die Anzahl nicht beschränkt.',
             'optionscode' => 'numeric',
             'value' => '0', // Default
-            'disporder' => 10
+            'disporder' => 11
         ),
         'application_manager_control_period_extension' => array(
             'title' => 'Selbstständige Verlängerung',
             'description' => 'Dürfen User:innen ihre Bewerbungsfrist selbstständig verlängern?',
             'optionscode' => 'yesno',
             'value' => '0', // Default
-            'disporder' => 11
+            'disporder' => 12
         ),
         'application_manager_control_period_visible' => array(
             'title' => 'Einsehbare Verlängerungen der Bewerbungsfrist',
             'description' => 'Dürfen andere User:innen die Anzahl der Verlängerungen sehen? Eigene Accounts und Teamaccounts sind ausgenommen.',
             'optionscode' => 'yesno',
             'value' => '0', // Default
-            'disporder' => 12
+            'disporder' => 13
         ),
         'application_manager_control_period_alert' => array(
             'title' => 'Benachrichtigung über ablaufende Bewerbungsfrist',
             'description' => 'Wie viele Tage vor Ablauf der Bewerbungsfrist sollen User:innen einen Erinnerungsbanner sehen können? 0 bedeutet, dass keine Benachrichtigung angezeigt wird.',
             'optionscode' => 'numeric',
             'value' => '0', // Default
-            'disporder' => 13
+            'disporder' => 14
         ),
         'application_manager_control_correction' => array(
             'title' => 'Korrekturfrist',
             'description' => 'Gibt es eine Korrekturfrist, die eingehalten werden muss? Sie wird bei jeder neuen Teamkorrektur zurückgesetzt.',
             'optionscode' => 'yesno',
             'value' => '0', // Default
-            'disporder' => 14
+            'disporder' => 15
         ),
         'application_manager_control_correction_days' => array(
             'title' => 'Korrekturzeitraum',
             'description' => 'Wie viele Tage haben Bewerber:innen Zeit die Korrektur zu übernehmen?',
             'optionscode' => 'numeric',
             'value' => '0', // Default
-            'disporder' => 15
+            'disporder' => 16
         ),
         'application_manager_control_correction_extension_days' => array(
             'title' => 'Verlängerungszeitraum der Korrekturfrist',
             'description' => 'Um wie viele Tage jeweils wird die Korrekturfrist verlängert? 0 deaktiviert diese Funktion.',
             'optionscode' => 'numeric',
             'value' => '0', // Default
-            'disporder' => 16
+            'disporder' => 17
         ),
         'application_manager_control_correction_extension_max' => array(
             'title' => 'Maximale Anzahl der Verlängerungen der Korrekturfrist',
             'description' => 'Wie oft darf die Korrekturfrist verlängert werden? Bei 0 ist die Anzahl nicht beschränkt.',
             'optionscode' => 'numeric',
             'value' => '0', // Default
-            'disporder' => 17
+            'disporder' => 18
         ),
         'application_manager_control_correction_extension' => array(
             'title' => 'Selbstständige Verlängerung',
             'description' => 'Dürfen User:innen ihre Korrekturfrist selbstständig verlängern?',
             'optionscode' => 'yesno',
             'value' => '0', // Default
-            'disporder' => 18
+            'disporder' => 19
         ),
         'application_manager_control_correction_visible' => array(
             'title' => 'Einsehbare Verlängerungen der Korrekturfrist',
             'description' => 'Dürfen andere User:innen die Anzahl der Verlängerungen sehen? Eigene Accounts und Teamaccounts sind ausgenommen.',
             'optionscode' => 'yesno',
             'value' => '0', // Default
-            'disporder' => 19
+            'disporder' => 20
         ),
         'application_manager_control_correction_alert' => array(
             'title' => 'Benachrichtigung über ablaufende Korrekturfrist',
             'description' => 'Wie viele Tage vor Ablauf der Bewerbungsfrist sollen User:innen einen Erinnerungsbanner sehen können? 0 bedeutet, dass keine Benachrichtigung angezeigt wird.',
             'optionscode' => 'numeric',
             'value' => '0', // Default
-            'disporder' => 20
+            'disporder' => 21
         ),
         'application_manager_control_team_alert' => array(
             'title' => 'Teamerinnerung für offene Bewerbungen',
             'description' => 'Wie lange darf eine Bewerbung oder Korrektur ohne Teamfeedback unbeantwortet bleiben, bis das entsprechende Teammitglied eine Benachrichtigung erhält? 0 bedeutet, dass keine Benachrichtigung gesendet wird.',
             'optionscode' => 'numeric',
             'value' => '0', // Default
-            'disporder' => 21
+            'disporder' => 22
         ),
         'application_manager_wob' => array(
             'title' => 'automatisches WoB',
             'description' => 'Können Bewerber:innen mit einem Klick angenommen werden?',
             'optionscode' => 'yesno',
             'value' => '0', // Default
-            'disporder' => 22
+            'disporder' => 23
         ),
         'application_manager_wob_primary' => array(
             'title' => 'primäre Gruppen',
             'description' => 'Welche Gruppen sollen zur Auswahl für die primäre Gruppe stehen?',
             'optionscode' => 'groupselect',
             'value' => 'none', // Default
-            'disporder' => 23
+            'disporder' => 24
         ),
         'application_manager_wob_secondary' => array(
             'title' => 'sekundäre Gruppen',
             'description' => 'Welche Gruppen sollen zur Auswahl für die sekundären Gruppen stehen?',
             'optionscode' => 'groupselect',
             'value' => 'none', // Default
-            'disporder' => 24
+            'disporder' => 25
         ),
         'application_manager_wob_answer' => array(
             'title' => 'automatischer Annahme-Text',
             'description' => 'Soll eine automatische Antwort bei Annahme des Accounts gesendet werden?',
             'optionscode' => 'select\n0=Nein\n1=automatischer Text\n2=automatischer Text mit Extrafunktion',
             'value' => '0', // Default
-            'disporder' => 25
+            'disporder' => 26
         ),
         'application_manager_wob_text' => array(
             'title' => 'Annahme-Text',
             'description' => 'Der Standardtext, der beim Klicken auf den WoB-Button gepostet wird, wenn der Account angenommen wird. HTML- und MyBB-Code sind möglich.',
             'optionscode' => 'textarea',
             'value' => '', // Default
-            'disporder' => 26
+            'disporder' => 27
         ),
         'application_manager_wob_date' => array(
             'title' => 'WoB Datum speichern',
             'description' => 'Gibt es in der Datenbanktabelle "users" eine Spalte, in der das Datum des WoB-Tages gespeichert werden soll? Falls nicht, einfach leer lassen.',
             'optionscode' => 'text',
             'value' => '', // Default
-            'disporder' => 27
+            'disporder' => 28
         ),
     );
 
