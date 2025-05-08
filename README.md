@@ -1,4 +1,4 @@
-# Bewerbung-Manager
+# Bewerbungs-Manager
 Das Plugin Bewerbungs-Manager bietet eine zentrale Verwaltung und Übersicht für alle Accounts im Bewerbungsprozess.<br>
 <br>
 <b>Zu den Hauptfunktionen gehören:</b>
