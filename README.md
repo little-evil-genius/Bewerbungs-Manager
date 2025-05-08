@@ -425,3 +425,14 @@ index.php?module=rpgstuff-application_manager_user<br>
 misc.php?action=application_manager
 
 # Demo
+## Checkliste
+<img src="https://stormborn.at/plugins/application_manager_checkliste_acp.png">
+<img src="https://stormborn.at/plugins/application_manager_checkliste_index.png">
+<img src="https://stormborn.at/plugins/application_manager_checkliste_contentfield.png">
+
+## Übersicht
+<img src="https://stormborn.at/plugins/application_manager_overview_acp.png">
+<img src="https://stormborn.at/plugins/application_manager_overview.png">
+
+## WoB-Tool
+<img src="https://stormborn.at/plugins/application_manager_wob.png">
