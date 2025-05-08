@@ -94,7 +94,7 @@ function application_manager_install(){
     // TEMPLATES ERSTELLEN
 	// Template Gruppe für jedes Design erstellen
     $templategroup = array(
-        "prefix" => "application_manager",
+        "prefix" => "applicationmanager",
         "title" => $db->escape_string("Bewerbungs-Manager"),
     );
     $db->insert_query("templategroups", $templategroup);
@@ -164,10 +164,10 @@ function application_manager_uninstall(){
     }
 
     // TEMPLATGRUPPE LÖSCHEN
-    $db->delete_query("templategroups", "prefix = 'application_manager'");
+    $db->delete_query("templategroups", "prefix = 'applicationmanager'");
 
     // TEMPLATES LÖSCHEN
-    $db->delete_query("templates", "title LIKE 'application_manager%'");
+    $db->delete_query("templates", "title LIKE 'applicationmanager%'");
     
     // EINSTELLUNGEN LÖSCHEN
     $db->delete_query('settings', "name LIKE 'application_manager%'");
@@ -311,8 +311,8 @@ function application_manager_admin_rpgstuff_menu_updates(&$sub_menu) {
 
 	global $mybb, $lang, $db;
 
-    // aheartforspinach || Katja || Ales
-    if ($db->table_exists("applicants") || $db->table_exists("application_ucp_management") || $db->table_exists("applications")) {
+    // aheartforspinach || Ales
+    if ($db->table_exists("applicants") || $db->table_exists("applications")) {
         
         $lang->load('application_manager');
     
@@ -401,15 +401,43 @@ function application_manager_admin_manage() {
 
             while ($list = $db->fetch_array($query_list)) {
 
-                $query_fields = $db->query("SELECT * FROM ".TABLE_PREFIX."application_checklist_fields
-                WHERE gid = ".$list['gid']."
-                ORDER BY disporder ASC, title ASC
-                ");
-                $field_list = [];
-                while($field = $db->fetch_array($query_fields)) {
-                    $field_list[] = '<a href="index.php?module=rpgstuff-application_manager&amp;action=edit_field&amp;fid='.$field['fid'].'">'.$field['title'].'</a>';
+                // spezifisch
+                if (!empty($list['requirement'])) {
+                    $query_fields = $db->query("SELECT * FROM ".TABLE_PREFIX."application_checklist_fields
+                    WHERE gid = ".$list['gid']."
+                    ORDER BY field_condition ASC, disporder ASC, title ASC
+                    ");
+                    $field_list = [];
+                    $current_group = '';
+                    while ($field = $db->fetch_array($query_fields)) {
+                        if ($field['field_condition'] !== $current_group) {
+                            $current_group = $field['field_condition'];
+                            if (!empty($current_group)) {
+                                $field_list[] = '<b>'.htmlspecialchars($current_group).'</b>';
+                            } 
+                        }
+                        $field_list[] = '<a href="index.php?module=rpgstuff-application_manager&amp;action=edit_field&amp;fid='.$field['fid'].'">'.htmlspecialchars($field['title']).'</a>';
+                    }
+                    // Profilfeld 
+                    if (is_numeric($list['requirement'])) {
+                        $fieldname = $db->fetch_field($db->simple_select("profilefields", "name", "fid = ".$list['requirement'].""), "name");
+                        $conditiondfield = $lang->sprintf($lang->application_manager_overview_conditiondfield_profile, $fieldname);
+                    } else {
+                        $fieldname = $db->fetch_field($db->simple_select("application_ucp_fields", "label", "fieldname = '".$list['requirement']."'"), "label");
+                        $conditiondfield = $lang->sprintf($lang->application_manager_overview_conditiondfield_application, $fieldname);
+                    }
+                    $fieldlist = $conditiondfield.implode("<br>", $field_list);
+                } else {
+                    $query_fields = $db->query("SELECT * FROM ".TABLE_PREFIX."application_checklist_fields
+                    WHERE gid = ".$list['gid']."
+                    ORDER BY disporder ASC, title ASC
+                    ");
+                    $field_list = [];
+                    while($field = $db->fetch_array($query_fields)) {
+                        $field_list[] = '<a href="index.php?module=rpgstuff-application_manager&amp;action=edit_field&amp;fid='.$field['fid'].'">'.htmlspecialchars($field['title']).'</a>';
+                    }
+                    $fieldlist = implode("<br>", $field_list);
                 }
-                $fieldlist = implode("<br>", $field_list);
 
                 if (!empty($list['description'])) {
                     $form_container->output_cell('<strong><a href="index.php?module=rpgstuff-application_manager&amp;action=edit_group&amp;gid='.$list['gid'].'">'.htmlspecialchars_uni($list['title']).'</a></strong> &#8226; <small>'.$parser->parse_message($list['description'], $parser_array).'</small><br>'.$fieldlist);
@@ -461,6 +489,20 @@ function application_manager_admin_manage() {
                     $errors[] = $lang->application_manager_group_form_error_title;
                 }
 
+                if ($mybb->get_input('requirement', MyBB::INPUT_INT) == 1) {
+                    if ($mybb->get_input('dataselect') == "profile") {
+                        if(empty($mybb->get_input('profilefield'))) {
+                            $errors[] = $lang->application_manager_group_form_error_profile;
+                        }
+                    } 
+                    // Steckifeld
+                    else if ($mybb->get_input('dataselect') == "application") {
+                        if(empty($mybb->get_input('applicationfield'))) {
+                            $errors[] = $lang->application_manager_group_form_error_application;
+                        }
+                    }
+                }
+
                 if(empty($errors)) {
 
                     $insert_group = array(
@@ -468,6 +510,16 @@ function application_manager_admin_manage() {
                         "description" => $db->escape_string($mybb->get_input('description')),
                         "disporder" => (int)$mybb->get_input('disporder')
                     );
+
+                    if ($mybb->get_input('requirement', MyBB::INPUT_INT) == 1) {
+                        if(!empty($mybb->get_input('profilefield'))) {
+                            $insert_group['requirement'] = $db->escape_string($mybb->get_input('profilefield'));
+                        } else {
+                            $insert_group['requirement'] = $db->escape_string($mybb->get_input('applicationfield'));
+                        }
+                        $insert_group['ignor_option'] = $db->escape_string($mybb->get_input('ignor_option'));
+                    }
+
                     $gid = $db->insert_query("application_checklist_groups", $insert_group);
         
                     // Log admin action
@@ -488,6 +540,8 @@ function application_manager_admin_manage() {
 			if (isset($errors)) {
 				$page->output_inline_error($errors);
 			}
+
+            $specificoptions = application_manager_acp_specific();
     
             // Build the form
             $form = new Form("index.php?module=rpgstuff-application_manager&amp;action=add_group", "post", "", 1);
@@ -518,10 +572,78 @@ function application_manager_admin_manage() {
                 $form->generate_numeric_field('disporder', $mybb->get_input('disporder'), array('id' => 'disporder', 'min' => 0)), 'disporder'
 			);
 
+            // Spezifisch
+            $form_container->output_row(
+				$lang->application_manager_group_form_requirement,
+				$lang->application_manager_group_form_requirement_desc,
+                $form->generate_yes_no_radio('requirement', $mybb->get_input('requirement', MyBB::INPUT_INT), array('id' => 'requirement')),
+			);
+            // Steckfeld oder Profilfeld - auswahl nur, wenn Stecki vorhanden ist
+            if ($db->table_exists("application_ucp_fields")) {
+                // Art
+                $form_container->output_row(
+                    $lang->application_manager_group_form_dataselect,
+                    "",
+                    $form->generate_select_box('dataselect', $specificoptions['dataselect_list'], $mybb->get_input('dataselect'), array('id' => 'dataselect')),
+                    'dataselect', array(), array('id' => 'row_dataselect')
+                );
+
+                // Steckifeld
+                $form_container->output_row(
+                    $lang->application_manager_group_form_application,
+                    $lang->application_manager_group_form_application_desc,
+                    $form->generate_select_box('applicationfield', $specificoptions['applicationfield_list'], $mybb->get_input('applicationfield'), array('id' => 'applicationfield', 'size' => 5)),
+                    'applicationfield', array(), array('id' => 'row_applicationfield')
+                );  
+                // Profilfeld
+                $form_container->output_row(
+                    $lang->application_manager_group_form_profile,
+                    $lang->application_manager_group_form_profile_desc,
+                    $form->generate_select_box('profilefield', $specificoptions['profilefield_list'], $mybb->get_input('profilefield'), array('id' => 'profilefield', 'size' => 5)),
+                    'profilefield', array(), array('id' => 'row_profilefield')
+                );  
+            } else { 
+                echo $form->generate_hidden_field("dataselect", "profile");
+                // Profilfeld
+                $form_container->output_row(
+                    $lang->application_manager_group_form_profile,
+                    $lang->application_manager_group_form_profile_desc, 
+                    $form->generate_select_box('profilefield', $specificoptions['profilefield_list'], $mybb->get_input('profilefield'), array('id' => 'profilefield', 'size' => 5)),
+                    'profilefield', array(), array('id' => 'row_profilefield')
+                ); 
+            }
+            
+            // Auszuschließende Optionen
+            $form_container->output_row(
+                $lang->application_manager_group_form_ignoroption,
+                $lang->application_manager_group_form_ignoroption_desc,
+                $form->generate_text_box('ignor_option', $mybb->get_input('ignor_option'), array('id' => 'ignor_option')), 
+                'ignor_option', array(), array('id' => 'row_ignor_option')
+            );
+
+
             $form_container->end();
             $buttons[] = $form->generate_submit_button($lang->application_manager_add_group_button);
             $form->output_submit_wrapper($buttons);
             $form->end();
+
+            if ($db->table_exists("application_ucp_fields")) {
+                echo '<script type="text/javascript" src="./jscripts/peeker.js?ver=1821"></script>
+                <script type="text/javascript">
+                $(function() {
+                    new Peeker($("input[name=\'requirement\']"), $("#row_dataselect, #row_ignor_option"), /^1$/, true);
+                    new Peeker($("#dataselect"), $("#row_applicationfield"), /^application/, false);
+                    new Peeker($("#dataselect"), $("#row_profilefield"), /^profile/, false);
+                    });
+                    </script>';
+            } else {
+                echo '<script type="text/javascript" src="./jscripts/peeker.js?ver=1821"></script>
+                <script type="text/javascript">
+                $(function() {
+                    new Peeker($("input[name=\'requirement\']"), $("#row_profilefield, #row_ignor_option"), /^1$/, true);
+                    });
+                    </script>';
+            }
 
             $page->output_footer();
             exit;
@@ -541,6 +663,20 @@ function application_manager_admin_manage() {
                     $errors[] = $lang->application_manager_group_form_error_title;
                 }
 
+                if ($mybb->get_input('requirement', MyBB::INPUT_INT) == 1) {
+                    if ($mybb->get_input('dataselect') == "profile") {
+                        if(empty($mybb->get_input('profilefield'))) {
+                            $errors[] = $lang->application_manager_group_form_error_profile;
+                        }
+                    } 
+                    // Steckifeld
+                    else if ($mybb->get_input('dataselect') == "application") {
+                        if(empty($mybb->get_input('applicationfield'))) {
+                            $errors[] = $lang->application_manager_group_form_error_application;
+                        }
+                    }
+                }
+
                 if(empty($errors)) {
 
                     $update_group = array(
@@ -548,6 +684,16 @@ function application_manager_admin_manage() {
                         "description" => $db->escape_string($mybb->get_input('description')),
                         "disporder" => (int)$mybb->get_input('disporder')
                     );
+
+                    if ($mybb->get_input('requirement', MyBB::INPUT_INT) == 1) {
+                        if(!empty($mybb->get_input('profilefield'))) {
+                            $update_group['requirement'] = $db->escape_string($mybb->get_input('profilefield'));
+                        } else {
+                            $update_group['requirement'] = $db->escape_string($mybb->get_input('applicationfield'));
+                        }
+                        $update_group['ignor_option'] = $db->escape_string($mybb->get_input('ignor_option'));
+                    }
+
                     $db->update_query("application_checklist_groups", $update_group, "gid ='".$mybb->get_input('gid')."'");
         
                     // Log admin action
@@ -576,11 +722,37 @@ function application_manager_admin_manage() {
 				$title = $mybb->get_input('title');
 				$description = $mybb->get_input('description');
 				$disporder = $mybb->get_input('disporder');
+                $requirement = $mybb->get_input('requirement', MyBB::INPUT_INT);
+                $dataselect = $mybb->get_input('dataselect');
+                $ignor_option = $mybb->get_input('ignor_option');
+                if ($dataselect == "profile") {
+                    $requirementfield = $mybb->get_input('profilefield');
+                } else {
+                    $requirementfield = $mybb->get_input('applicationfield');
+                }
 			} else {
 				$title = $group['title'];
 				$description = $group['description'];
 				$disporder = $group['disporder'];
+                if(!empty($group['requirement'])) {
+                    $requirement = 1;
+                    $requirementfield = $group['requirement'];
+                    $ignor_option = $group['ignor_option'];
+
+                    if(is_numeric($group['requirement'])) {
+                        $dataselect = "profile";
+                    } else {
+                        $dataselect = "application";
+                    }
+                } else {
+                    $requirement = 0;
+                    $dataselect = "";
+                    $requirementfield = "";
+                    $ignor_option = "";
+                }
             }
+
+            $specificoptions = application_manager_acp_specific();
     
             // Build the form
             $form = new Form("index.php?module=rpgstuff-application_manager&amp;action=edit_group", "post", "", 1);
@@ -612,10 +784,77 @@ function application_manager_admin_manage() {
                 $form->generate_numeric_field('disporder', $disporder, array('id' => 'disporder', 'min' => 0)), 'disporder'
 			);
 
+            // Spezifisch
+            $form_container->output_row(
+				$lang->application_manager_group_form_requirement,
+				$lang->application_manager_group_form_requirement_desc,
+                $form->generate_yes_no_radio('requirement', $requirement, array('id' => 'requirement')),
+			);
+            // Steckfeld oder Profilfeld - auswahl nur, wenn Stecki vorhanden ist
+            if ($db->table_exists("application_ucp_fields")) {
+                // Art
+                $form_container->output_row(
+                    $lang->application_manager_group_form_dataselect,
+                    "",
+                    $form->generate_select_box('dataselect', $specificoptions['dataselect_list'], $dataselect, array('id' => 'dataselect')),
+                    'dataselect', array(), array('id' => 'row_dataselect')
+                );
+
+                // Steckifeld
+                $form_container->output_row(
+                    $lang->application_manager_group_form_application,
+                    $lang->application_manager_group_form_application_desc,
+                    $form->generate_select_box('applicationfield', $specificoptions['applicationfield_list'], $requirementfield, array('id' => 'applicationfield', 'size' => 5)),
+                    'applicationfield', array(), array('id' => 'row_applicationfield')
+                );  
+                // Profilfeld
+                $form_container->output_row(
+                    $lang->application_manager_group_form_profile,
+                    $lang->application_manager_group_form_profile_desc,
+                    $form->generate_select_box('profilefield', $specificoptions['profilefield_list'], $requirementfield, array('id' => 'profilefield', 'size' => 5)),
+                    'profilefield', array(), array('id' => 'row_profilefield')
+                );  
+            } else { 
+                echo $form->generate_hidden_field("dataselect", "profile");
+                // Profilfeld
+                $form_container->output_row(
+                    $lang->application_manager_group_form_profile,
+                    $lang->application_manager_group_form_profile_desc,
+                    $form->generate_select_box('profilefield', $specificoptions['profilefield_list'], $requirementfield, array('id' => 'profilefield', 'size' => 5)),
+                    'profilefield', array(), array('id' => 'row_profilefield')
+                ); 
+            }
+            
+            // Auszuschließende Optionen
+            $form_container->output_row(
+                $lang->application_manager_group_form_ignoroption,
+                $lang->application_manager_group_form_ignoroption_desc,
+                $form->generate_text_box('ignor_option', $ignor_option, array('id' => 'ignor_option')), 
+                'ignor_option', array(), array('id' => 'row_ignor_option')
+            );
+
             $form_container->end();
             $buttons[] = $form->generate_submit_button($lang->application_manager_edit_group_button);
             $form->output_submit_wrapper($buttons);
             $form->end();
+
+            if ($db->table_exists("application_ucp_fields")) {
+                echo '<script type="text/javascript" src="./jscripts/peeker.js?ver=1821"></script>
+                <script type="text/javascript">
+                $(function() {
+                    new Peeker($("input[name=\'requirement\']"), $("#row_dataselect, #row_ignor_option"), /^1$/, true);
+                    new Peeker($("#dataselect"), $("#row_applicationfield"), /^application/, false);
+                    new Peeker($("#dataselect"), $("#row_profilefield"), /^profile/, false);
+                    });
+                    </script>';
+            } else {
+                echo '<script type="text/javascript" src="./jscripts/peeker.js?ver=1821"></script>
+                <script type="text/javascript">
+                $(function() {
+                    new Peeker($("input[name=\'requirement\']"), $("#row_profilefield, #row_ignor_option"), /^1$/, true);
+                    });
+                    </script>';
+            }
 
             $page->output_footer();
             exit;
@@ -665,6 +904,14 @@ function application_manager_admin_manage() {
                 }
                 if(empty($mybb->get_input('gid'))) {
                     $errors[] = $lang->application_manager_field_form_error_group;
+                } else {
+                    $checkRequirement = $db->fetch_field($db->simple_select("application_checklist_groups", "requirement" ,"gid = ".$mybb->get_input('gid').""), "requirement");
+
+                    if(!empty($checkRequirement)) {
+                        if(empty($mybb->get_input('field_condition'))){
+                            $errors[] = $lang->application_manager_field_form_error_fieldcondition;
+                        }
+                    }
                 }
                 if(empty($mybb->get_input('dataselect'))) {
                     $errors[] = $lang->application_manager_field_form_error_dataselect;
@@ -756,6 +1003,13 @@ function application_manager_admin_manage() {
                         "field" => $db->escape_string($input_field),
                         "ignor_option" => $db->escape_string($input_ignor)
                     );
+
+                    $checkRequirement = $db->fetch_field($db->simple_select("application_checklist_groups", "requirement" ,"gid = ".$mybb->get_input('gid').""), "requirement");
+
+                    if(!empty($checkRequirement)) {
+                        $insert_field['field_condition'] = $db->escape_string($mybb->get_input('field_condition'));
+                    }
+
                     $fid = $db->insert_query("application_checklist_fields", $insert_field);
 
                     // Log admin action
@@ -798,6 +1052,13 @@ function application_manager_admin_manage() {
 				$lang->application_manager_field_form_group_desc, 
                 $form->generate_select_box('gid', $field_options['group_list'], $mybb->get_input('gid'), array('id' => 'gid'))
             );
+
+            // Spezifisches
+            $form_container->output_row(
+                $lang->application_manager_field_form_fieldcondition,
+				$lang->application_manager_field_form_fieldcondition_desc, 
+                $form->generate_text_box('field_condition', $mybb->get_input('field_condition'), array('id' => 'field_condition')), 'field_condition'
+			);
 
             // Sortierung
             $form_container->output_row(
@@ -947,6 +1208,14 @@ function application_manager_admin_manage() {
                     }
                     if(empty($mybb->get_input('gid'))) {
                         $errors[] = $lang->application_manager_field_form_error_group;
+                    } else {
+                        $checkRequirement = $db->fetch_field($db->simple_select("application_checklist_groups", "requirement" ,"gid = ".$mybb->get_input('gid').""), "requirement");
+    
+                        if(!empty($checkRequirement)) {
+                            if(empty($mybb->get_input('field_condition'))){
+                                $errors[] = $lang->application_manager_field_form_error_fieldcondition;
+                            }
+                        }
                     }
                     if(empty($mybb->get_input('dataselect'))) {
                         $errors[] = $lang->application_manager_field_form_error_dataselect;
@@ -1043,6 +1312,13 @@ function application_manager_admin_manage() {
                             "field" => $db->escape_string($input_field),
                             "ignor_option" => $db->escape_string($input_ignor)
                         );
+
+                        $checkRequirement = $db->fetch_field($db->simple_select("application_checklist_groups", "requirement" ,"gid = ".$mybb->get_input('gid').""), "requirement");
+    
+                        if(!empty($checkRequirement)) {
+                            $update_field['field_condition'] = $db->escape_string($mybb->get_input('field_condition'));
+                        }
+
                         $db->update_query("application_checklist_fields", $update_field, "fid ='".$mybb->get_input('fid')."'");
     
                         // Log admin action
@@ -1076,6 +1352,7 @@ function application_manager_admin_manage() {
 				$page->output_inline_error($errors);
                 $field['gid'] = $mybb->get_input('gid');
                 $field['title'] = $mybb->get_input('title');
+                $field['field_condition'] = $mybb->get_input('field_condition');
                 $field['disporder'] = $mybb->get_input('disporder');
                 $field['data'] = $mybb->get_input('data');
                 $field['field'] = $mybb->get_input('field');
@@ -1119,6 +1396,13 @@ function application_manager_admin_manage() {
 				$lang->application_manager_field_form_group_desc,
                 $form->generate_select_box('gid', $field_options['group_list'], $field['gid'], array('id' => 'gid'))
             );
+
+            // Spezifisches
+            $form_container->output_row(
+                $lang->application_manager_field_form_fieldcondition,
+				$lang->application_manager_field_form_fieldcondition_desc,
+                $form->generate_text_box('field_condition', $field['field_condition'], array('id' => 'field_condition')), 'field_condition'
+			);
 
             // Sortierung
             $form_container->output_row(
@@ -1306,10 +1590,12 @@ function application_manager_admin_manage() {
                     // Korrekturfrist aktiv
                     if ($control_correction == 1) {
                         if ($correction_extension_days != 0) {
-                            $form_container->output_cell($lang->application_manager_user_none, array("colspan" => 3, 'style' => 'text-align: center;'));
+                            $form_container->output_cell($lang->application_manager_user_no, array("colspan" => 3, 'style' => 'text-align: center;'));
                         } else {
-                            $form_container->output_cell($lang->$lang->application_manager_user_none, array("colspan" => 2, 'style' => 'text-align: center;'));
+                            $form_container->output_cell($lang->application_manager_user_no, array("colspan" => 2, 'style' => 'text-align: center;'));
                         }
+                    } else {
+                        $form_container->output_cell('-', array('style' => 'text-align: center;'));
                     }
                 } else {
 
@@ -1319,16 +1605,18 @@ function application_manager_admin_manage() {
                     } 
                     // Korrekturfristen
                     else {
-                        if ($period_extension_days != 0) {
-                            $form_container->output_cell($lang->application_manager_user_under, array("colspan" => 2, 'style' => 'text-align: center;'));
-                        } else {
-                            $form_container->output_cell($lang->application_manager_user_under, array('style' => 'text-align: center;'));
-                        }
-                   
                         // Korrekturfrist aktiv
                         if ($control_correction == 1) {
+                            // Bewerbungsspalten - "unter Korrektur"
+                            if ($period_extension_days != 0) {
+                                $form_container->output_cell($lang->application_manager_user_under, array("colspan" => 2, 'style' => 'text-align: center;'));
+                            } else {
+                                $form_container->output_cell($lang->application_manager_user_under, array('style' => 'text-align: center;'));
+                            }
+
                             // wartet auf die erste Korrektur
-                            if ($applicants['correction_deadline'] == 0) {
+                            if ($applicants['correction_team'] == 0) {
+                                // unterschiedlich lange Texte
                                 if ($correction_extension_days != 0) {
                                     $form_container->output_cell($lang->application_manager_user_first, array("colspan" => 2, 'style' => 'text-align: center;'));
                                 } else {
@@ -1341,14 +1629,15 @@ function application_manager_admin_manage() {
                                 if (!is_null($applicants['correction_deadline'])) {
                                     $correction_deadline = new DateTime($applicants['correction_deadline']);
                                     $correction_deadline->setTime(0, 0, 0);
-                                    $deadlineC = $application_deadline->format('d.m.Y');
+                                    $deadlineC = $correction_deadline->format('d.m.Y');
                                     $form_container->output_cell($deadlineC, array('style' => 'text-align: center;'));
                                     if ($correction_extension_days != 0) {
-                                        $form_container->output_cell($applicants['correction_extension_count']."x");
+                                        $form_container->output_cell($applicants['correction_extension_count']."x", array('style' => 'text-align: center;'));
                                     }
                                 } 
                                 // Team muss korrigieren
                                 else {
+                                    // unterschiedlich lange Texte
                                     if ($correction_extension_days != 0) {
                                         $form_container->output_cell($lang->application_manager_user_return, array("colspan" => 2, 'style' => 'text-align: center;'));
                                     } else {
@@ -1356,10 +1645,15 @@ function application_manager_admin_manage() {
                                     }
                                 }
                             }
-                            
-                            $corrector = application_manager_correctorname($applicants['corrector']);
-                            $form_container->output_cell('<a href="member.php?action=profile&uid='.$applicants['corrector'].'">'.$corrector.'</a></strong>', array('style' => 'text-align: center;'));
+                        } else {
+                            $startline = new DateTime($applicants['correction_start']);
+                            $startline->setTime(0, 0, 0);
+                            $StartDate = $startline->format('d.m.Y');
+                            $form_container->output_cell($lang->application_manager_user_under." seit ".$StartDate, array("colspan" => 2, 'style' => 'text-align: center;'));
                         }
+                            
+                        $corrector = application_manager_correctorname($applicants['corrector']);
+                        $form_container->output_cell('<a href="member.php?action=profile&uid='.$applicants['corrector'].'">'.$corrector.'</a></strong>', array('style' => 'text-align: center;'));
                     }
                 }
 
@@ -1572,7 +1866,7 @@ function application_manager_admin_manage() {
         $applicationsystem_list = array(
             "" => $lang->application_manager_transfer_applicationsystem,
             "sophie" => $lang->application_manager_transfer_applicationsystem_sophie,
-            "katja" => $lang->application_manager_transfer_applicationsystem_katja,
+            // "katja" => $lang->application_manager_transfer_applicationsystem_katja,
             "ales" => $lang->application_manager_transfer_applicationsystem_ales
         );
 
@@ -1596,7 +1890,7 @@ function application_manager_admin_manage() {
                     $db->delete_query('application_manager');
 
                     // Sophie
-                    if ($selected_tracker == "sophie") {
+                    if ($selected_system == "sophie") {
 
                         $applicants_player = $mybb->settings['applicants_player'];
 
@@ -1642,7 +1936,7 @@ function application_manager_admin_manage() {
                     }
 
                     // Katja
-                    if ($selected_tracker == "katja") {
+                    if ($selected_system == "katja") {
 
                         $applicationgroup = $mybb->settings['application_ucp_applicants'];
                         $applicationtime = $mybb->settings['application_ucp_applicationtime'];
@@ -1658,7 +1952,12 @@ function application_manager_admin_manage() {
                             // Infos => Bewerberfrist
                             $uid = $applicant['uid'];
                             $application_extension_count = $applicant['aucp_extend'];
-                            $regDate = new DateTime($applicant['regdate']);
+                            $regDate = new DateTime();
+                            if (is_numeric($applicant['regdate'])) {
+                                $regDate->setTimestamp((int)$applicant['regdate']);
+                            } else {
+                                $regDate = new DateTime($applicant['regdate']);
+                            }
                             $regDate->setTime(0, 0, 0);
 
                             if ($application_extension_count != 0) {
@@ -1735,7 +2034,7 @@ function application_manager_admin_manage() {
                     }
 
                     // Ales
-                    if ($selected_tracker == "ales") {
+                    if ($selected_system == "ales") {
 
                         $allApplicants = $db->query("SELECT * FROM ".TABLE_PREFIX."applications");
 
@@ -1991,7 +2290,7 @@ function application_manager_checklist() {
             // Leer laufen lassen
             $bannerText = $lang->application_manager_checklist_banner;
         }
-        eval("\$application_checklist = \"".$templates->get("application_manager_checklist_banner")."\";");
+        eval("\$application_checklist = \"".$templates->get("applicationmanager_checklist_banner")."\";");
     } 
     // Checklist
     else {
@@ -2021,24 +2320,89 @@ function application_manager_checklist() {
             $description = "";
             $disporder = "";
             $comma = "";
+            $requirement = "";
+            $ignor_option = "";
+            $requirementcheck = "";
     
             // Mit Infos füllen
             $gid = $group['gid'];
             $title = $group['title'];
             $description = $parser->parse_message($group['description'], $parser_array);
             $disporder = $group['disporder'];
+            $requirement = $group['requirement'];
+            $ignor_option = $group['ignor_option'];
+
+            // Gruppe ist spezifisch
+            if(!empty($requirement)) {
+                // Profilfeld
+                if (is_numeric($requirement)) {
+                    $profileFID = "fid".$requirement;
+                    $requirementCheck = $db->fetch_field($db->simple_select("userfields", $profileFID, "ufid = ".$accountID.""), $profileFID);
+                    $fieldname = $db->fetch_field($db->simple_select("profilefields", "name", "fid = ".$requirement.""), "name");
+
+                    // ignorierende Angaben beachten
+                    if (!empty($ignor_option)) {
+                        $expoptions = application_manager_ignoroptions('profile', $requirement, $ignor_option);
     
-            if (!empty($description)) {
-                $comma = $lang->application_manager_checklist_comma;
+                        if (in_array($requirementCheck, $expoptions)) {
+                            $requirementcheck = $requirementCheck;
+                        } else {
+                            $requirementcheck = "";
+                        }
+                    } 
+                    // nur überprüfen, ob ausgefüllt
+                    else {
+                        if(!empty($requirementCheck)) {
+                            $requirementcheck = $requirementCheck;
+                        } else {
+                            $requirementcheck = "";
+                        }
+                    }
+                }
+                // Steckifeld
+                else {
+                    $fieldid = $db->fetch_field($db->simple_select("application_ucp_fields", "id", "fieldname = '".$requirement."'"), "id");
+                    $requirementCheck = $db->fetch_field($db->simple_select("application_ucp_userfields", "value", "uid = ".$accountID." AND fieldid = ".$fieldid.""), "value");
+                    $fieldname = $db->fetch_field($db->simple_select("application_ucp_fields", "label", "id = ".$fieldid.""), "label");
+
+                    // ignorierende Angaben beachten
+                    if (!empty($ignor_option)) {
+                        $expoptions = application_manager_ignoroptions('application', $fieldID, $ignor_option);
+
+                        if (in_array($requirementCheck, $expoptions)) {
+                            $requirementcheck = $requirementCheck;
+                        } else {
+                            $requirementcheck = "";
+                        }
+                    } 
+                    // nur überprüfen, ob ausgefüllt
+                    else {
+                        if(!empty($requirementCheck)) {
+                            $requirementcheck = $requirementCheck;
+                        } else {
+                            $requirementcheck = "";
+                        }
+                    }
+                }
             } else {
-                $comma = "";
+                $requirementcheck = "";
             }
-    
-            // Punkte
-            $query_fields = $db->query("SELECT * FROM ".TABLE_PREFIX."application_checklist_fields cf
-            WHERE gid = ".$gid."
-            ORDER BY disporder ASC, title ASC
-            ");
+
+            // Punkte - spezifisch nach Auswahl
+            if(!empty($requirementcheck)) {
+                $query_fields = $db->query("SELECT * FROM ".TABLE_PREFIX."application_checklist_fields cf
+                WHERE gid = ".$gid."
+                AND field_condition = '".$requirementcheck."'
+                ORDER BY disporder ASC, title ASC
+                ");
+            } 
+            // Alle Punkte für die Gruppe
+            else {
+                $query_fields = $db->query("SELECT * FROM ".TABLE_PREFIX."application_checklist_fields cf
+                WHERE gid = ".$gid."
+                ORDER BY disporder ASC, title ASC
+                ");
+            }
     
             $pointcounter = 0;
             $checkcounter = 0;
@@ -2069,26 +2433,56 @@ function application_manager_checklist() {
                 // STATUS
                 // Profilfeld
                 if ($data_field == "profile") {
+
                     $profileFID = "fid".$fieldID;
                     $fieldcheck = $db->fetch_field($db->simple_select("userfields", $profileFID, "ufid = ".$accountID.""), $profileFID);
-    
-                    if(empty($fieldcheck)) {
-                        $pointstatus = $lang->application_manager_checklist_fieldCheck;
-                        $checkcounter++;
-                    } else {
-                        $pointstatus = $lang->application_manager_checklist_fieldUncheck;
+
+                    // ignorierende Angaben beachten
+                    if (!empty($ignor_option)) {
+                        $expoptions = application_manager_ignoroptions('profile', $requirement, $ignor_option);
+
+                        if (in_array($fieldcheck, $expoptions)) {
+                            $pointstatus = $lang->application_manager_checklist_fieldCheck;
+                            $checkcounter++;
+                        } else {
+                            $pointstatus = $lang->application_manager_checklist_fieldUncheck;
+                        }
+                    } 
+                    // nur überprüfen, ob ausgefüllt
+                    else {
+                        if(!empty($fieldcheck)) {
+                            $pointstatus = $lang->application_manager_checklist_fieldCheck;
+                            $checkcounter++;
+                        } else {
+                            $pointstatus = $lang->application_manager_checklist_fieldUncheck;
+                        }
                     }
                 }
                 // Steckifeld
                 else if ($data_field == "application") {
-                    $fieldid = $db->fetch_field($db->simple_select("application_ucp_fields", "id", "fieldname = ".$fieldID.""), "id");
+
+                    $fieldid = $db->fetch_field($db->simple_select("application_ucp_fields", "id", "fieldname = '".$fieldID."'"), "id");
                     $fieldcheck = $db->fetch_field($db->simple_select("application_ucp_userfields", "value", "uid = ".$accountID." AND fieldid = ".$fieldid.""), "value");
-    
-                    if(!empty($fieldcheck)) {
-                        $pointstatus = $lang->application_manager_checklist_fieldCheck;
-                        $checkcounter++;
-                    } else {
-                        $pointstatus = $lang->application_manager_checklist_fieldUncheck;
+
+                    // ignorierende Angaben beachten
+                    if (!empty($ignor_option)) {
+                        $expoptions = application_manager_ignoroptions('application', $fieldID, $ignor_option);
+
+                        if (in_array($fieldcheck, $expoptions)) {
+                            $pointstatus = $lang->application_manager_checklist_fieldCheck;
+                            $checkcounter++;
+                        } else {
+                            $pointstatus = $lang->application_manager_checklist_fieldUncheck;
+                        }
+                    } 
+                    // nur überprüfen, ob ausgefüllt
+                    else {
+                        if(!empty($fieldcheck)) {
+                            $pointstatus = $lang->application_manager_checklist_fieldCheck;
+                            $checkcounter++;
+                        } else {
+                            $pointstatus = $lang->application_manager_checklist_fieldUncheck;
+                        }
                     }
                 }
                 // Geburtstagsfeld
@@ -2184,7 +2578,7 @@ function application_manager_checklist() {
                     }
                 }
     
-                eval("\$checklist_points .= \"".$templates->get("application_manager_checklist_points")."\";");
+                eval("\$checklist_points .= \"".$templates->get("applicationmanager_checklist_points")."\";");
             }
     
             // STATUS
@@ -2193,8 +2587,28 @@ function application_manager_checklist() {
             } else {
                 $group_status = $lang->application_manager_checklist_groupUncheck;
             }
+
+            if (!empty($requirementcheck)) {
+                // keine spezifischen Punkte für diese Auswah
+                if(empty($checklist_points)) {
+                    $description = $lang->sprintf($lang->application_manager_checklist_requirementcheck_none, $requirementcheck);
+                } else {
+                    $description = $lang->sprintf($lang->application_manager_checklist_requirementcheck, $requirementcheck);
+                }
+            } else {
+                if(!empty($requirement)) {
+                    $checklist_points = $lang->sprintf($lang->application_manager_checklist_requirement, $fieldname);
+                    $group_status = $lang->application_manager_checklist_groupUncheck;
+                }
+            }
     
-            eval("\$checklist_groups .= \"".$templates->get("application_manager_checklist_group")."\";");
+            if (!empty($description)) {
+                $comma = $lang->application_manager_checklist_comma;
+            } else {
+                $comma = "";
+            }
+    
+            eval("\$checklist_groups .= \"".$templates->get("applicationmanager_checklist_group")."\";");
         }
 
         // Bewerberfristenkram anzeigen
@@ -2213,10 +2627,10 @@ function application_manager_checklist() {
     
             $application_deadline = $lang->sprintf($lang->application_manager_checklist_deadline, $EndDate);
 
-            if ($period_extension_days != 0 && $period_extension == 1 && $deadline > $today) {
+            if ($period_extension_days != 0 && $period_extension == 1 && $deadline >= $today) {
                 // noch Verlängerungen möglich
                 if ($period_extension_max == 0 || $application['application_extension_count'] < $period_extension_max) {
-                    $extensionPlus = "<a href=\"misc.php?action=application_manager_period_update&aid=".$application['aid']."\"><b>".$lang->application_manager_plus."</b></a>";
+                    $extensionPlus = "<a href=\"misc.php?action=application_manager_period_update&aid=".$application['aid']."\">".$lang->application_manager_plus."</a>";
                     // Unendlich verlängern
                     if ($period_extension_max == 0) {
                         $headlineText = $application_deadline." ".$lang->sprintf($lang->application_manager_checklist_extension_endless, $period_extension_days, $extensionPlus);
@@ -2236,7 +2650,7 @@ function application_manager_checklist() {
             $headlineText = $lang->application_manager_checklist;
         }
     
-        eval("\$application_checklist = \"".$templates->get("application_manager_checklist")."\";");
+        eval("\$application_checklist = \"".$templates->get("applicationmanager_checklist")."\";");
     }
 }
 
@@ -2369,12 +2783,12 @@ function application_manager_misc() {
             }
 
 
-            eval("\$open_applications .= \"".$templates->get("application_manager_overview_open")."\";");
+            eval("\$open_applications .= \"".$templates->get("applicationmanager_overview_open")."\";");
         }
 
         if(empty($open_applications)) {
             $overview_none = $lang->application_manager_overview_open_none;
-            eval("\$open_applications = \"".$templates->get("application_manager_overview_none")."\";");
+            eval("\$open_applications = \"".$templates->get("applicationmanager_overview_none")."\";");
         }
 
         // unter Korrektur
@@ -2437,7 +2851,7 @@ function application_manager_misc() {
                 $StartDate->setTime(0, 0, 0);
                 $startDate = $lang->sprintf($lang->application_manager_overview_correction_startDate, $StartDate->format('d.m.Y'));
 
-                eval("\$correction_applications .= \"".$templates->get("application_manager_overview_correction")."\";");
+                eval("\$correction_applications .= \"".$templates->get("applicationmanager_overview_correction")."\";");
             } else {
 
                 // noch keine Korrektur bekommen
@@ -2501,24 +2915,24 @@ function application_manager_misc() {
                     $extensionPlus = "";
                 }
 
-                eval("\$correction_applications .= \"".$templates->get("application_manager_overview_correction_period")."\";");
+                eval("\$correction_applications .= \"".$templates->get("applicationmanager_overview_correction_period")."\";");
             }
 
         }
 
         if(empty($correction_applications)) {
             $overview_none = $lang->application_manager_overview_corr_none;
-            eval("\$correction_applications = \"".$templates->get("application_manager_overview_none")."\";");
+            eval("\$correction_applications = \"".$templates->get("applicationmanager_overview_none")."\";");
         }
 
         if ($control_correction == 0) {
-            eval("\$correction_legend = \"".$templates->get("application_manager_overview_correction_legend")."\";");
+            eval("\$correction_legend = \"".$templates->get("applicationmanager_overview_correction_legend")."\";");
         } else {
-            eval("\$correction_legend = \"".$templates->get("application_manager_overview_correction_legend_period")."\";");
+            eval("\$correction_legend = \"".$templates->get("applicationmanager_overview_correction_legend_period")."\";");
         }
 
         // TEMPLATE FÜR DIE SEITE
-        eval("\$page = \"".$templates->get("application_manager_overview")."\";");
+        eval("\$page = \"".$templates->get("applicationmanager_overview")."\";");
         output_page($page);
         die();
     }
@@ -3061,7 +3475,7 @@ function application_manager_banner() {
                     $bannerText = $lang->sprintf($lang->application_manager_banner_deadline_days, $username, $remainingDays, $extensionPlus);
                 }
     
-                eval("\$application_deadline_reminder .= \"".$templates->get("application_manager_banner")."\";"); 
+                eval("\$application_deadline_reminder .= \"".$templates->get("applicationmanager_banner")."\";"); 
             }
         }
     }
@@ -3126,7 +3540,7 @@ function application_manager_banner() {
                     $bannerText = $lang->sprintf($lang->application_manager_banner_correction_days, $username, $remainingDays, $extensionPlus);
                 }
     
-                eval("\$application_deadline_reminder .= \"".$templates->get("application_manager_banner")."\";"); 
+                eval("\$application_deadline_reminder .= \"".$templates->get("applicationmanager_banner")."\";"); 
             }
         }
     }
@@ -3176,7 +3590,7 @@ function application_manager_banner() {
                 
                 $bannerText = $lang->sprintf($lang->application_manager_banner_teamreminder_first, $username, $daysWaiting);
     
-                eval("\$application_team_reminder .= \"".$templates->get("application_manager_banner")."\";"); 
+                eval("\$application_team_reminder .= \"".$templates->get("applicationmanager_banner")."\";"); 
             }
         }
 
@@ -3214,7 +3628,7 @@ function application_manager_banner() {
                 
                 $bannerText = $lang->sprintf($lang->application_manager_banner_teamreminder, $username, $daysWaiting);
     
-                eval("\$application_team_reminder .= \"".$templates->get("application_manager_banner")."\";"); 
+                eval("\$application_team_reminder .= \"".$templates->get("applicationmanager_banner")."\";"); 
             }
         }
 
@@ -3255,7 +3669,7 @@ function application_manager_banner() {
             
             $bannerText = $lang->sprintf($lang->application_manager_banner_teamreminder_open, $username, $postdate, $correctorPlus);
 
-            eval("\$application_openAlert .= \"".$templates->get("application_manager_banner")."\";"); 
+            eval("\$application_openAlert .= \"".$templates->get("applicationmanager_banner")."\";"); 
         }       
     } else {
         $application_openAlert = "";
@@ -3322,7 +3736,7 @@ function application_manager_forumdisplay_thread() {
     if ($correctorUID == 0) {
         if (is_member($teamgroup)) {
             $aid = $db->fetch_field($db->simple_select("application_manager", "aid" ,"uid = '".$thread['uid']."'"), "aid");    
-            eval("\$applicationPlus = \"".$templates->get("application_manager_forumdisplay_button")."\";");
+            eval("\$applicationPlus = \"".$templates->get("applicationmanager_forumdisplay_button")."\";");
         } else {
             $applicationPlus = "";
         }
@@ -3331,7 +3745,7 @@ function application_manager_forumdisplay_thread() {
         $applicationPlus = "";
         $corrector = application_manager_correctorname($correctorUID);
         $correctorText = $lang->sprintf($lang->application_manager_forumdisplay_corrector, $corrector);
-        eval("\$application_corrector = \"".$templates->get("application_manager_forumdisplay_corrector")."\";");
+        eval("\$application_corrector = \"".$templates->get("applicationmanager_forumdisplay_corrector")."\";");
     }
 }
 
@@ -3375,7 +3789,7 @@ function application_manager_showthread() {
     } else {
         $corrector = application_manager_correctorname($correctorUID);
         $correctorText = $lang->sprintf($lang->application_manager_showthread_corrector, $corrector);
-        eval("\$application_corrector = \"".$templates->get("application_manager_showthread_corrector")."\";");
+        eval("\$application_corrector = \"".$templates->get("applicationmanager_showthread_corrector")."\";");
 
         // Korrekturpost? - Select
         if ($control_correction == 1) {
@@ -3397,7 +3811,7 @@ function application_manager_showthread() {
             if ($selectName !== null) {
                 $correctionoptionNone = "";
                 $correctionoptionPost = "";
-                eval("\$application_correction = \"".$templates->get("application_manager_showthread_correction")."\";");
+                eval("\$application_correction = \"".$templates->get("applicationmanager_showthread_correction")."\";");
             }
         } else {
             $application_correction = "";
@@ -3469,7 +3883,7 @@ function application_manager_newreply() {
             $correctionoptionPost = "";
         }
         
-        eval("\$application_correction = \"".$templates->get("application_manager_showthread_correction")."\";");    
+        eval("\$application_correction = \"".$templates->get("applicationmanager_showthread_correction")."\";");    
     }
 }
 
@@ -3648,7 +4062,7 @@ function application_manager_automaticwob() {
         foreach ($grouparray_primary as $gid => $title) {
             $usergroups_bit .= "<option value=\"".$gid."\">".$title."</option>";
         }
-        eval("\$usergroups = \"".$templates->get("application_manager_wob_usergroup")."\";");
+        eval("\$usergroups = \"".$templates->get("applicationmanager_wob_usergroup")."\";");
     } else {
         $usergroups = "";
     }
@@ -3666,7 +4080,7 @@ function application_manager_automaticwob() {
         foreach ($grouparray_secondary as $gid => $title) {
             $additionalgroups_bit .= "<option value=\"".$gid."\">".$title."</option>";
         }
-        eval("\$additionalgroups = \"".$templates->get("application_manager_wob_additionalgroup")."\";");
+        eval("\$additionalgroups = \"".$templates->get("applicationmanager_wob_additionalgroup")."\";");
     } else {
         $additionalgroups = "";
     }
@@ -3685,7 +4099,7 @@ function application_manager_automaticwob() {
         }
         // Extrafunktion
         else {
-            eval("\$wobtext_extra = \"".$templates->get("application_manager_wob_text")."\";");
+            eval("\$wobtext_extra = \"".$templates->get("applicationmanagerwob_text")."\";");
             $editButton = "<a href=\"#application_manager_wob\">".$lang->application_manager_wobtext_notice_editButton."</a>";
             $wobtext_notice = $lang->sprintf($lang->application_manager_wobtext_notice_edit, $editButton);
         }
@@ -3701,7 +4115,7 @@ function application_manager_automaticwob() {
         if ($correctorUID != 0) {
             $userids_array = application_manager_get_allchars($mybb->user['uid']);
             if (array_key_exists($correctorUID, $userids_array)) {
-                eval("\$application_wob = \"".$templates->get("application_manager_wob")."\";");
+                eval("\$application_wob = \"".$templates->get("applicationmanager_wob")."\";");
             } else {
                 $application_wob = "";
             }
@@ -3712,7 +4126,7 @@ function application_manager_automaticwob() {
     // Alle Teammitglieder sehen WoB Tool
     else {
         if (is_member($teamgroup)) {
-            eval("\$application_wob = \"".$templates->get("application_manager_wob")."\";");
+            eval("\$application_wob = \"".$templates->get("applicationmanager_wob")."\";");
         } else {
             $application_wob = "";
         }
@@ -3801,6 +4215,51 @@ function application_manager_acp_tabmenu() {
     return $sub_tabs;
 }
 
+// ACP - Formular Gruppen
+function application_manager_acp_specific() {
+
+    global $lang, $db;
+
+    $lang->load('application_manager');
+
+    $dataselect_list = [
+        "profile" => $lang->application_manager_field_form_dataselect_profile,
+        "application" => $lang->application_manager_field_form_dataselect_application
+    ];
+    
+    // Steckifelder auslesen
+    if (!$db->table_exists("application_ucp_fields")) {
+        $applicationfield_list = "";
+        $query_applicationfields = "";
+    } else {
+        $query_applicationfields = $db->query("SELECT * FROM ".TABLE_PREFIX."application_ucp_fields
+        ORDER BY sorting ASC, label ASC          
+        ");
+    
+        $applicationfield_list = [];
+        while($fields = $db->fetch_array($query_applicationfields)) {
+            $applicationfield_list[$fields['fieldname']] = $fields['label'];
+        }
+    }
+
+    // Profilfelder auslesen
+    $query_profilefields = $db->query("SELECT * FROM ".TABLE_PREFIX."profilefields
+    ORDER BY disporder ASC, name ASC       
+    ");
+    $profilefield_list = [];
+    while($fields = $db->fetch_array($query_profilefields)) {
+        $profilefield_list[$fields['fid']] = $fields['name'];    
+    }
+
+    return [
+        'dataselect_list' => $dataselect_list,
+        'applicationfield_list' => $applicationfield_list,
+        'profilefield_list' => $profilefield_list,
+        'query_applicationfields' => $query_applicationfields,
+        'query_profilefields' => $query_profilefields,
+    ];
+}
+
 // ACP - Formular Punkte
 function application_manager_acp_fieldoptions($fid = '') {
 
@@ -3869,7 +4328,7 @@ function application_manager_acp_fieldoptions($fid = '') {
         "birthday" => $lang->application_manager_field_form_dataselect_birthday,
         "avatar" => $lang->application_manager_field_form_dataselect_avatar,
         "upload" => $lang->application_manager_field_form_dataselect_upload,
-        "php" => $lang->application_manager_field_form_dataselect_upload
+        "php" => $lang->application_manager_field_form_dataselect_php
     ]);
     
     // Steckbrieffelder
@@ -4047,6 +4506,43 @@ function application_manager_allgroups($grouplist = '') {
     return $grouparray;  
 }
 
+// IGNOR OPTIONS
+function application_manager_ignoroptions($type, $fieldid, $ignor_option) {
+
+    global $db;
+
+    $expoptions = [];
+    if ($type === 'application') {
+        $options = $db->fetch_field($db->simple_select("application_ucp_fields", "options", "id = ".$fieldid),"options");
+
+        $expoptions = str_replace(", ", ",", $options);
+        $expoptions = explode(",", $expoptions);
+
+        $ignoroption = str_replace(", ", ",", $ignor_option);
+        $ignoroption = explode(",", $ignoroption);
+
+        foreach ($ignoroption as $option) {
+            $option_index = $option - 1;
+            unset($expoptions[$option_index]);
+        }
+    }
+    elseif ($type === 'profile') {
+        $options = $db->fetch_field($db->simple_select("profilefields", "type", "fid = ".$fieldid), "type");
+        
+        $expoptions = explode("\n", $options);
+        unset($expoptions[0]);
+
+        $ignoroption = str_replace(", ", ",", $ignor_option);
+        $ignoroption = explode(",", $ignoroption);
+
+        foreach ($ignoroption as $option) {
+            unset($expoptions[$option]);
+        }
+    }
+
+    return $expoptions;
+}
+
 #######################################
 ### DATABASE | SETTINGS | TEMPLATES ###
 #######################################
@@ -4073,7 +4569,7 @@ function application_manager_database() {
             PRIMARY KEY(`aid`),
             KEY `aid` (`aid`)
             )
-            ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci AUTO_INCREMENT=1
+            ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci AUTO_INCREMENT=1
         ");
     }
 
@@ -4085,10 +4581,12 @@ function application_manager_database() {
             `title` VARCHAR(100) NOT NULL,
             `description` VARCHAR(500) NOT NULL,
             `disporder` int(5) NOT NULL DEFAULT '0',
+            `requirement` VARCHAR(100) NOT NULL,
+            `ignor_option` VARCHAR(100) NOT NULL,
             PRIMARY KEY(`gid`),
             KEY `gid` (`gid`)
             )
-            ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci AUTO_INCREMENT=1
+            ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci AUTO_INCREMENT=1
         ");
     }
     // Punkte
@@ -4100,11 +4598,12 @@ function application_manager_database() {
             `disporder` int(5) NOT NULL DEFAULT '0',
             `data` VARCHAR(100) NOT NULL,
             `field` VARCHAR(100) NOT NULL,
+            `field_condition` VARCHAR(100) NOT NULL,
             `ignor_option` VARCHAR(500) NOT NULL,
             PRIMARY KEY(`fid`),
             KEY `fid` (`fid`)
             )
-            ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci AUTO_INCREMENT=1
+            ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci AUTO_INCREMENT=1
         ");
     }
 }
@@ -4117,7 +4616,7 @@ function application_manager_settings($type = 'install') {
     $setting_array = array(
 		'application_manager_applicationgroup' => array(
 			'title' => 'Bewerbungsgruppe',
-            'description' => 'Welche Benutzergruppe entspricht der Bewerbungsgruppe?',
+            'description' => 'Welche Gruppe entspricht der Bewerbungsgruppe?',
             'optionscode' => 'groupselectsingle',
             'value' => '2', // Default
             'disporder' => 1
@@ -4215,7 +4714,7 @@ function application_manager_settings($type = 'install') {
         ),
         'application_manager_control_correction_days' => array(
             'title' => 'Korrekturzeitraum',
-            'description' => 'Wie viele Tage haben Bewerber:innen Zeit, die Korrektur zu übernehmen?',
+            'description' => 'Wie viele Tage haben Bewerber:innen Zeit die Korrektur zu übernehmen?',
             'optionscode' => 'numeric',
             'value' => '0', // Default
             'disporder' => 15
@@ -4270,15 +4769,15 @@ function application_manager_settings($type = 'install') {
             'disporder' => 22
         ),
         'application_manager_wob_primary' => array(
-            'title' => 'primäre Benutzergruppen',
-            'description' => 'Welche Gruppen sollen zur Auswahl für die primäre Benutzergruppe stehen?',
+            'title' => 'primäre Gruppen',
+            'description' => 'Welche Gruppen sollen zur Auswahl für die primäre Gruppe stehen?',
             'optionscode' => 'groupselect',
             'value' => 'none', // Default
             'disporder' => 23
         ),
         'application_manager_wob_secondary' => array(
-            'title' => 'sekundäre Benutzergruppen',
-            'description' => 'Welche Gruppen sollen zur Auswahl für die sekundäre Benutzergruppe stehen?',
+            'title' => 'sekundäre Gruppen',
+            'description' => 'Welche Gruppen sollen zur Auswahl für die sekundären Gruppen stehen?',
             'optionscode' => 'groupselect',
             'value' => 'none', // Default
             'disporder' => 24
@@ -4299,7 +4798,7 @@ function application_manager_settings($type = 'install') {
         ),
         'application_manager_wob_date' => array(
             'title' => 'WoB Datum speichern',
-            'description' => 'Gibt es in der Datenbanktabelle ‚users‘ eine Spalte, in der das Datum des WoB-Tages gespeichert werden soll? Falls nicht, einfach leer lassen.',
+            'description' => 'Gibt es in der Datenbanktabelle "users" eine Spalte, in der das Datum des WoB-Tages gespeichert werden soll? Falls nicht, einfach leer lassen.',
             'optionscode' => 'text',
             'value' => '', // Default
             'disporder' => 27
@@ -4368,7 +4867,7 @@ function application_manager_templates($mode = '') {
     global $db;
 
     $templates[] = array(
-        'title'		=> 'application_manager_banner',
+        'title'		=> 'applicationmanager_banner',
         'template'	=> $db->escape_string('<div class="red_alert">{$bannerText}</div>'),
         'sid'		=> '-2',
         'version'	=> '',
@@ -4376,7 +4875,7 @@ function application_manager_templates($mode = '') {
     );
 
     $templates[] = array(
-        'title'		=> 'application_manager_checklist',
+        'title'		=> 'applicationmanager_checklist',
         'template'	=> $db->escape_string('<div class="application_manager_checklist">
         <div class="application_manager_checklist-headline">{$headlineText}</div>
         {$checklist_groups}
@@ -4387,7 +4886,7 @@ function application_manager_templates($mode = '') {
     );
 
     $templates[] = array(
-        'title'		=> 'application_manager_checklist_banner',
+        'title'		=> 'applicationmanager_checklist_banner',
         'template'	=> $db->escape_string('<div class="pm_alert">{$bannerText}</div>'),
         'sid'		=> '-2',
         'version'	=> '',
@@ -4395,7 +4894,7 @@ function application_manager_templates($mode = '') {
     );
 
     $templates[] = array(
-        'title'		=> 'application_manager_checklist_group',
+        'title'		=> 'applicationmanager_checklist_group',
         'template'	=> $db->escape_string('<div class="application_manager_checklist-group">
         <div class="application_manager_checklist-group_status">{$group_status}</div>
         <div class="application_manager_checklist-group_content">
@@ -4409,7 +4908,7 @@ function application_manager_templates($mode = '') {
     );
 
     $templates[] = array(
-        'title'		=> 'application_manager_checklist_points',
+        'title'		=> 'applicationmanager_checklist_points',
         'template'	=> $db->escape_string('{$pointname} {$extrainformation} {$pointstatus}'),
         'sid'		=> '-2',
         'version'	=> '',
@@ -4417,7 +4916,7 @@ function application_manager_templates($mode = '') {
     );
 
     $templates[] = array(
-        'title'		=> 'application_manager_forumdisplay_button',
+        'title'		=> 'applicationmanager_forumdisplay_button',
         'template'	=> $db->escape_string('<a href="misc.php?action=application_manager_corrector_update&aid={$aid}"><b>{$lang->application_manager_forumdisplay_button}</b></a>'),
         'sid'		=> '-2',
         'version'	=> '',
@@ -4425,7 +4924,7 @@ function application_manager_templates($mode = '') {
     );
 
     $templates[] = array(
-        'title'		=> 'application_manager_forumdisplay_corrector',
+        'title'		=> 'applicationmanager_forumdisplay_corrector',
         'template'	=> $db->escape_string('<em><span class="smalltext" style="background: url(\'images/nav_bit.png\') no-repeat left; padding-left: 18px;">{$correctorText}</span></em><br />'),
         'sid'		=> '-2',
         'version'	=> '',
@@ -4433,7 +4932,7 @@ function application_manager_templates($mode = '') {
     );
 
     $templates[] = array(
-        'title'		=> 'application_manager_overview',
+        'title'		=> 'applicationmanager_overview',
         'template'	=> $db->escape_string('<html>
         <head>
 		<title>{$mybb->settings[\'bbname\']} - {$lang->application_manager_overview}</title>
@@ -4467,7 +4966,7 @@ function application_manager_templates($mode = '') {
     );
 
     $templates[] = array(
-        'title'		=> 'application_manager_overview_correction',
+        'title'		=> 'applicationmanager_overview_correction',
         'template'	=> $db->escape_string('<div class="application_manager_overview_applications">
         <div class="application_manager_overview_applications_div">{$username}</div>
         <div class="application_manager_overview_applications_div">{$corrector} {$startDate}</div>
@@ -4478,7 +4977,7 @@ function application_manager_templates($mode = '') {
     );
 
     $templates[] = array(
-        'title'		=> 'application_manager_overview_correction_legend',
+        'title'		=> 'applicationmanager_overview_correction_legend',
         'template'	=> $db->escape_string('<div class="application_manager_overview_legend">
         <div class="application_manager_overview_legend_div">{$lang->application_manager_overview_legend_name}</div>
         <div class="application_manager_overview_legend_div">{$lang->application_manager_overview_legend_corrector}</div>
@@ -4489,7 +4988,7 @@ function application_manager_templates($mode = '') {
     );
 
     $templates[] = array(
-        'title'		=> 'application_manager_overview_correction_legend_period',
+        'title'		=> 'applicationmanager_overview_correction_legend_period',
         'template'	=> $db->escape_string('<div class="application_manager_overview_legend">
         <div class="application_manager_overview_legend_div">{$lang->application_manager_overview_legend_name}</div>
         <div class="application_manager_overview_legend_div">{$lang->application_manager_overview_legend_remainingDays}</div>
@@ -4501,7 +5000,7 @@ function application_manager_templates($mode = '') {
     );
 
     $templates[] = array(
-        'title'		=> 'application_manager_overview_correction_period',
+        'title'		=> 'applicationmanager_overview_correction_period',
         'template'	=> $db->escape_string('<div class="application_manager_overview_applications">
         <div class="application_manager_overview_applications_div">{$username} {$extensionPlus}</div>
         <div class="application_manager_overview_applications_div">{$deadlineText} {$extensionText} {$correctionButton}</div>
@@ -4513,7 +5012,7 @@ function application_manager_templates($mode = '') {
     );
 
     $templates[] = array(
-        'title'		=> 'application_manager_overview_none',
+        'title'		=> 'applicationmanager_overview_none',
         'template'	=> $db->escape_string('<div class="application_manager_overview_applications">{$overview_none}</div>'),
         'sid'		=> '-2',
         'version'	=> '',
@@ -4521,7 +5020,7 @@ function application_manager_templates($mode = '') {
     );
 
     $templates[] = array(
-        'title'		=> 'application_manager_overview_open',
+        'title'		=> 'applicationmanager_overview_open',
         'template'	=> $db->escape_string('<div class="application_manager_overview_applications">
         <div class="application_manager_overview_applications_div">{$username} {$extensionPlus}</div>
         <div class="application_manager_overview_applications_div">{$deadlineText} {$extensionText}</div>
@@ -4532,7 +5031,7 @@ function application_manager_templates($mode = '') {
     );
 
     $templates[] = array(
-        'title'		=> 'application_manager_showthread_correction',
+        'title'		=> 'applicationmanager_showthread_correction',
         'template'	=> $db->escape_string('<select name="{$selectName}" id="{$selectName}">
         <option value="">{$lang->application_manager_showthread_select}</option>
         <option value="none" {$correctionoptionNone}>{$lang->application_manager_showthread_selectNone}</option>
@@ -4544,7 +5043,7 @@ function application_manager_templates($mode = '') {
     );
 
     $templates[] = array(
-        'title'		=> 'application_manager_showthread_corrector',
+        'title'		=> 'applicationmanager_showthread_corrector',
         'template'	=> $db->escape_string('<br /><em><span class="smalltext" style="background: url(\'images/nav_bit.png\') no-repeat left; padding-left: 18px;">{$correctorText}</span></em>'),
         'sid'		=> '-2',
         'version'	=> '',
@@ -4552,7 +5051,7 @@ function application_manager_templates($mode = '') {
     );
 
     $templates[] = array(
-        'title'		=> 'application_manager_wob',
+        'title'		=> 'applicationmanager_wob',
         'template'	=> $db->escape_string('<tr>
         <td class="application_manager_wob_headline">
 		<strong>{$lang->application_manager_wob}</strong>
@@ -4584,7 +5083,7 @@ function application_manager_templates($mode = '') {
     );
 
     $templates[] = array(
-        'title'		=> 'application_manager_wob_additionalgroup',
+        'title'		=> 'applicationmanager_wob_additionalgroup',
         'template'	=> $db->escape_string('<div>
         <label><b>{$lang->application_manager_wob_additionalgroups}</b></label><br />
         <select name="additionalgroups[]" id="additionalgroups[]" size="3" multiple="multiple">
@@ -4598,7 +5097,7 @@ function application_manager_templates($mode = '') {
     );
 
     $templates[] = array(
-        'title'		=> 'application_manager_wob_text',
+        'title'		=> 'applicationmanager_wob_text',
         'template'	=> $db->escape_string('<div id="application_manager_wob" class="application_manager-accpop">
         <div class="application_manager-pop">
 		<div class="application_manager_wob_headline"><b>{$lang->application_manager_wob_editText}</b></div>
@@ -4614,7 +5113,7 @@ function application_manager_templates($mode = '') {
     );
 
     $templates[] = array(
-        'title'		=> 'application_manager_wob_usergroup',
+        'title'		=> 'applicationmanager_wob_usergroup',
         'template'	=> $db->escape_string('<div>
         <label><b>{$lang->application_manager_wob_usergroup}</b></label><br />
         <select name="usergroup" id="usergroup" required>
@@ -4677,7 +5176,7 @@ function application_manager_stylesheet() {
         }
 
         .application_manager_checklist-headline {
-        background: #0066a2 url(../../../images/thead.png) top left repeat-x
+        background: #0066a2 url(../../../images/thead.png) top left repeat-x;
         color: #ffffff;
         border-bottom: 1px solid #263c30;
         padding: 8px;
