@@ -64,7 +64,7 @@ Für jeden Checklistenpunkt kannst du festlegen, <b>wie geprüft wird</b>, ob er
 - Eigene PHP-Abfrage - für individuellere Prüfungen (z.B. Joblisten)
 
 ### Eigene PHP-Abfragen (für Sonderfälle)
-Nicht alle Informationen lassen sich mit den Standardoptionen prüfen. Für solche Fälle kannst du eigene Datenbankabfragen definieren. Beispiel: <a href="https://github.com/katjalennartz/jobliste/tree/main" target="_blank">Jobliste von risuena</<br>
+Nicht alle Informationen lassen sich mit den Standardoptionen prüfen. Für solche Fälle kannst du eigene Datenbankabfragen definieren. Beispiel: <a href="https://github.com/katjalennartz/jobliste/tree/main" target="_blank">Jobliste von risuena</a><br>
 - Datenbanktabelle: Name der Tabelle, in der die Einträge gespeichert sind (jl_entry)
 - UID-Spalte: Name der Spalte, in der die User-IDs gespeichert sind (je_uid)
 - Überprüfungs-Spalte: Name der Spalte, in der geprüft wird, ob ein Eintrag vorhanden ist (je_position)
