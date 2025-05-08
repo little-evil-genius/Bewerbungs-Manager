@@ -11,9 +11,9 @@ if(!defined("IN_MYBB"))
 	die("Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.");
 }
 
-// ini_set('display_errors', 1);
-// ini_set('display_startup_errors', 1);
-// error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
 // HOOKS
 $plugins->add_hook("admin_config_settings_change", "application_manager_settings_change");
@@ -37,7 +37,7 @@ $plugins->add_hook('newthread_do_newthread_end', 'application_manager_do_newthre
 $plugins->add_hook('showthread_start', 'application_manager_automaticwob');
 $plugins->add_hook("fetch_wol_activity_end", "application_manager_online_activity");
 $plugins->add_hook("build_friendly_wol_location_end", "application_manager_online_location");
-$plugins->add_hook("admin_user_users_delete_commit_end", "application_manager_users_delete");
+$plugins->add_hook("admin_user_users_delete_commit_end", "application_manager_user_delete");
  
 // Die Informationen, die im Pluginmanager angezeigt werden
 function application_manager_info(){
@@ -1915,10 +1915,26 @@ function application_manager_admin_manage() {
 
                             $new_applicant = array(
                                 'uid' => (int)$uid,
-                                'application_deadline' => $application_deadline,
-                                'application_extension_count' => (int)$application_extension_count,
                                 'corrector' => (int)$correctorUID,
                             );
+
+                            $checkApplication = $db->fetch_field($db->simple_select("threads", "tid" ,"fid = ".$applicationforum." AND uid = '".$accountID."'"), "tid");
+                            if (!empty($checkApplication)) {
+                                $thread = get_thread($checkApplication);
+                                $startDate = new DateTime();
+                                if (is_numeric($thread['dateline'])) {
+                                    $startDate->setTimestamp((int)$thread['dateline']);
+                                } else {
+                                    $startDate = new DateTime($thread['dateline']);
+                                }
+                                $startDate->setTime(0, 0, 0);
+
+                                $new_applicant['correction_start'] = $db->escape_string($startDate->format("Y-m-d"));
+                            } else {
+                                $new_applicant['application_deadline'] = $application_deadline;
+                                $new_applicant['application_extension_count'] = (int)$application_extension_count;
+                            }
+
     
                             if (!$db->insert_query("application_manager", $new_applicant)) {
                                 $all_successful = false;
@@ -2066,10 +2082,25 @@ function application_manager_admin_manage() {
 
                             $new_applicant = array(
                                 'uid' => (int)$uid,
-                                'application_deadline' => $application_deadline,
-                                'application_extension_count' => (int)$application_extension_count,
                                 'corrector' => (int)$correctorUID,
                             );
+
+                            $checkApplication = $db->fetch_field($db->simple_select("threads", "tid" ,"fid = ".$applicationforum." AND uid = '".$accountID."'"), "tid");
+                            if (!empty($checkApplication)) {
+                                $thread = get_thread($checkApplication);
+                                $startDate = new DateTime();
+                                if (is_numeric($thread['dateline'])) {
+                                    $startDate->setTimestamp((int)$thread['dateline']);
+                                } else {
+                                    $startDate = new DateTime($thread['dateline']);
+                                }
+                                $startDate->setTime(0, 0, 0);
+
+                                $new_applicant['correction_start'] = $db->escape_string($startDate->format("Y-m-d"));
+                            } else {
+                                $new_applicant['application_deadline'] = $application_deadline;
+                                $new_applicant['application_extension_count'] = (int)$application_extension_count;
+                            }
     
                             if (!$db->insert_query("application_manager", $new_applicant)) {
                                 $all_successful = false;
@@ -2260,6 +2291,10 @@ function application_manager_checklist() {
     $period_extension = $mybb->settings['application_manager_control_period_extension'];
     $period_extension_days = $mybb->settings['application_manager_control_period_extension_days'];
     $period_extension_max = $mybb->settings['application_manager_control_period_extension_max'];
+    $control_correction = $mybb->settings['application_manager_control_correction'];
+    $correction_extension = $mybb->settings['application_manager_control_correction_extension'];
+    $correction_extension_days = $mybb->settings['application_manager_control_correction_extension_days'];
+    $correction_extension_max = $mybb->settings['application_manager_control_correction_extension_max'];
 
     if ($checklist_setting == 0) {
         $application_checklist = "";
@@ -2280,7 +2315,7 @@ function application_manager_checklist() {
     $checkApplication = $db->fetch_field($db->simple_select("threads", "tid" ,"fid = ".$applicationforum." AND uid = '".$accountID."'"), "tid");
 
     // Eingereichte Bewerbung => Banner
-    if (!empty($checkApplication)) {
+    if (!empty($checkApplication) && $checklist_hidden == 1) {
         // Mit Bewerberübersichtskram
         if ($control_setting == 1) {
             $correctorUID = $db->fetch_field($db->simple_select("application_manager", "corrector" ,"uid = '".$accountID."'"), "corrector");
@@ -2633,28 +2668,70 @@ function application_manager_checklist() {
         $application_query = $db->simple_select("application_manager", "*", "uid = '".$accountID."'");
         $application = $db->fetch_array($application_query);
 
-        $deadline = new DateTime($application['application_deadline']);
-        $deadline->setTime(0, 0, 0);
-        $EndDate = $deadline->format('d.m.Y');
+        // Bewerbungsfrist
+        if (!empty($application['application_deadline'])) {
 
-        $application_deadline = $lang->sprintf($lang->application_manager_checklist_deadline, $EndDate);
-
-        if ($period_extension_days != 0 && $period_extension == 1 && $deadline >= $today) {
-            // noch Verlängerungen möglich
-            if ($period_extension_max == 0 || $application['application_extension_count'] < $period_extension_max) {
-                $extensionPlus = "<a href=\"misc.php?action=application_manager_period_update&aid=".$application['aid']."\">".$lang->application_manager_plus."</a>";
-                // Unendlich verlängern
-                if ($period_extension_max == 0) {
-                    $headlineText = $application_deadline." ".$lang->sprintf($lang->application_manager_checklist_extension_endless, $period_extension_days, $extensionPlus);
+            $deadline = new DateTime($application['application_deadline']);
+            $deadline->setTime(0, 0, 0);
+            $EndDate = $deadline->format('d.m.Y');
+    
+            $application_deadline = $lang->sprintf($lang->application_manager_checklist_deadline, $EndDate);
+    
+            if ($period_extension_days != 0 && $period_extension == 1 && $deadline >= $today) {
+                // noch Verlängerungen möglich
+                if ($period_extension_max == 0 || $application['application_extension_count'] < $period_extension_max) {
+                    $extensionPlus = "<a href=\"misc.php?action=application_manager_period_update&aid=".$application['aid']."\">".$lang->application_manager_plus."</a>";
+                    // Unendlich verlängern
+                    if ($period_extension_max == 0) {
+                        $headlineText = $application_deadline." ".$lang->sprintf($lang->application_manager_checklist_extension_endless, $period_extension_days, $extensionPlus);
+                    } else {
+                        $restExtension = $period_extension_max - $application['application_extension_count'];
+                        $headlineText = $application_deadline." ".$lang->sprintf($lang->application_manager_checklist_extension, $restExtension, $period_extension_days, $extensionPlus);
+                    }
                 } else {
-                    $restExtension = $period_extension_max - $application['application_extension_count'];
-                    $headlineText = $application_deadline." ".$lang->sprintf($lang->application_manager_checklist_extension, $restExtension, $period_extension_days, $extensionPlus);
+                    $headlineText = $application_deadline." ".$lang->application_manager_checklist_extension_none;
                 }
             } else {
-                $headlineText = $application_deadline." ".$lang->application_manager_checklist_extension_none;
+                $headlineText = $application_deadline;
             }
-        } else {
-            $headlineText = $application_deadline;
+        } 
+        // Korrektur
+        else {
+            if ($application['corrector'] != 0) {
+                $corrector = application_manager_correctorname($application['corrector']);
+                if($application['correction_team'] == 0) {
+                    $headlineText = $lang->sprintf($lang->application_manager_checklist_banner_corrector, $corrector);
+                } else {
+                    if (!empty($application['correction_deadline']) && $control_correction == 1) {
+                        $deadlineC = new DateTime($application['correction_deadline']);
+                        $deadlineC->setTime(0, 0, 0);
+                        $EndDate = $deadlineC->format('d.m.Y');
+
+                        $correction_deadline = $lang->sprintf($lang->application_manager_checklist_correction_deadline, $corrector, $EndDate);
+                        if ($correction_extension_days != 0 && $correction_extension == 1 && $deadlineC >= $today) {
+                            // noch Verlängerungen möglich
+                            if ($correction_extension_max == 0 || $application['correction_extension_count'] < $correction_extension_max) {
+                                $extensionPlus = "<a href=\"misc.php?action=application_manager_correction_extension_update&aid=".$application['aid']."\">".$lang->application_manager_plus."</a>";
+                                // Unendlich verlängern
+                                if ($correction_extension_max == 0) {
+                                    $headlineText = $correction_deadline." ".$lang->sprintf($lang->application_manager_checklist_extension_endless, $period_extension_days, $extensionPlus);
+                                } else {
+                                    $restExtension = $correction_extension_max - $application['correction_extension_count'];
+                                    $headlineText = $correction_deadline." ".$lang->sprintf($lang->application_manager_checklist_extension, $restExtension, $correction_extension_days, $extensionPlus);
+                                }
+                            } else {
+                                $headlineText = $correction_deadline." ".$lang->application_manager_checklist_extension_none;
+                            }
+                        } else {
+                            $headlineText = $correction_deadline;
+                        }
+                    } else {
+                        $headlineText = $lang->sprintf($lang->application_manager_checklist_correction_wait, $corrector);
+                    }
+                }
+            } else {
+                $headlineText = $lang->application_manager_checklist_banner_control;
+            }
         }
     }
     // normale Headline
@@ -3415,6 +3492,8 @@ function application_manager_banner() {
         return;
     }
 
+    $lang->load('application_manager');
+
     $today = new DateTime();
     $today->setTime(0, 0, 0);
 
@@ -3526,7 +3605,7 @@ function application_manager_banner() {
 
                 if ($correction_extension_days != 0 && $correction_extension == 1 && $remainingDays > 0) {
                     // noch Verlängerungen möglich
-                    if ($correction_extension_max == 0 || $deadline['correction_extension_count'] < $correction_extension_max) {
+                    if ($correction_extension_max == 0 || $deadlineC['correction_extension_count'] < $correction_extension_max) {
                         $extensionPlus = "<a href=\"misc.php?action=application_manager_correction_extension_update&aid=".$aid."\">".$lang->application_manager_banner_extension."</a>";
                     } else {
                         $extensionPlus = "";
@@ -3925,20 +4004,22 @@ function application_manager_validate_post(&$dh) {
         $excluded_check = false;
     }
 
-    if ($applicationforum == $fid || $control_setting == 1 || $control_correction == 1 || $excluded_check) {   
-        $application_query = $db->simple_select("application_manager", "correction_deadline, corrector", "uid = '".$thread['uid']."'");    
-        $application = $db->fetch_array($application_query);
+    if ($applicationforum == $fid) {
+        if ($control_setting == 1 || $control_correction == 1 || $excluded_check) {
+            $application_query = $db->simple_select("application_manager", "correction_deadline, corrector", "uid = '".$thread['uid']."'");    
+            $application = $db->fetch_array($application_query);
+            
+            $userids_array = application_manager_get_allchars($mybb->user['uid']);
         
-        $userids_array = application_manager_get_allchars($mybb->user['uid']);
-    
-        if (array_key_exists($application['corrector'], $userids_array)) {
-            if(!$mybb->get_input('correctionTeam')) {
-                $dh->set_error($lang->application_manager_validate_team);
+            if (array_key_exists($application['corrector'], $userids_array)) {
+                if(!$mybb->get_input('correctionTeam')) {
+                    $dh->set_error($lang->application_manager_validate_team);
+                }
             }
-        }
-        if (array_key_exists($thread['uid'], $userids_array)) {
-            if(!$mybb->get_input('correctionUser')) {
-                $dh->set_error($lang->application_manager_validate_user);
+            if (array_key_exists($thread['uid'], $userids_array)) {
+                if(!$mybb->get_input('correctionUser')) {
+                    $dh->set_error($lang->application_manager_validate_user);
+                }
             }
         }
     }
@@ -4461,13 +4542,18 @@ function application_manager_correctorname($uid){
 
     $playername_setting = $mybb->settings['application_manager_playername'];
 
-    if (is_numeric($playername_setting)) {
-        $playername_fid = "fid".$playername_setting;
-        $playername = $db->fetch_field($db->simple_select("userfields", $playername_fid ,"ufid = '".$uid."'"), $playername_fid);
+    if (!empty($playername_setting)) {
+        if (is_numeric($playername_setting)) {
+            $playername_fid = "fid".$playername_setting;
+            $playername = $db->fetch_field($db->simple_select("userfields", $playername_fid ,"ufid = '".$uid."'"), $playername_fid);
+        } else {
+            $playername_fid = $db->fetch_field($db->simple_select("application_ucp_fields", "id", "fieldname = '".$playername_setting."'"), "id");
+            $playername = $db->fetch_field($db->simple_select("application_ucp_userfields", "value", "uid = '".$uid."' AND fieldid = '".$playername_fid."'"), "value");
+        }
     } else {
-        $playername_fid = $db->fetch_field($db->simple_select("application_ucp_fields", "id", "fieldname = '".$playername_setting."'"), "id");
-        $playername = $db->fetch_field($db->simple_select("application_ucp_userfields", "value", "uid = '".$uid."' AND fieldid = '".$playername_fid."'"), "value");
+        $playername = "";
     }
+
     if (!empty($playername)) {
         $corrector = $playername;
     } else {
