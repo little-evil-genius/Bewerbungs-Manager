@@ -8,14 +8,19 @@ function task_application_manager($task){
     $control_period = $mybb->settings['application_manager_control_period'];
 
     // Neue Bewerber hinzufügen
-    $newApplicants = $db->query("SELECT uid, regdate FROM ".TABLE_PREFIX."users
-    WHERE usergroup = $applicationgroup
-    AND uid NOT IN(SELECT uid FROM ".TABLE_PREFIX."applicants
-    )");
+    $newApplicants = $db->query("SELECT * FROM ".TABLE_PREFIX."users
+    WHERE usergroup = ".$applicationgroup."
+    AND uid NOT IN(SELECT uid FROM ".TABLE_PREFIX."application_manager)
+    ");
 
     while ($new = $db->fetch_array($newApplicants)) {
 
-        $regDate = new DateTime($new['regdate']);
+        $regDate = new DateTime();
+        if (is_numeric($new['regdate'])) {
+            $regDate->setTimestamp((int)$new['regdate']);
+        } else {
+            $regDate = new DateTime($new['regdate']);
+        }
         $regDate->setTime(0, 0, 0);
         $regDate->modify("+{$control_period} days");
         $application_deadline = $db->escape_string($regDate->format("Y-m-d"));
@@ -25,7 +30,7 @@ function task_application_manager($task){
             'application_deadline' => $application_deadline,
         );
 
-        $db->insert_query('applicants', $insertApplicant);
+        $db->insert_query('application_manager', $insertApplicant);
     }
 
     // gelöschte Accounts entfernen
@@ -39,12 +44,12 @@ function task_application_manager($task){
 
     // angenommen Accounts entfernen
     $oldApplicants = $db->query("SELECT uid FROM ".TABLE_PREFIX."users
-    WHERE usergroup != $applicationgroup
-    AND uid IN(SELECT uid FROM ".TABLE_PREFIX."applicants)
+    WHERE usergroup != ".$applicationgroup."
+    AND uid IN(SELECT uid FROM ".TABLE_PREFIX."application_manager)
     ");
 
     while ($old = $db->fetch_array($oldApplicants)) {
-        $db->delete_query('applicants', 'uid = '.$old['uid']);
+        $db->delete_query('application_manager', 'uid = '.$old['uid']);
     }
 
     add_task_log($task, 'Gelöschte und angenommene Bewerber:innen wurde entfernt.');
