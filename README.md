@@ -34,7 +34,7 @@ Im ACP (RPG Erweiterungen » Accounts im Bewerbungsprozess) gibt es zusätzlich 
 Diese Übersicht und Verwaltung ist nicht kompatibel mit dem <a href="https://github.com/katjalennartz/application_ucp" target="_blank">Steckbriefe im UCP von risuena</a>.
 
 ## Checkliste
-Das Plugin bietet eine flexible Checklisten-Funktion, mit der bestimmte Angaben für Accounts im Bewerbungsprozess verpflichtend abgefragt werden können. Jede Person in der Bewerbungsphase sieht im Header des Forums eine persönliche To-Do-Liste, die anzeigt, welche vom Team festgelegten Punkte noch zu erledigen sind. So behalten Bewerber:innen jederzeit den Überblick, was ihnen noch fehlt.<br>
+Das Plugin bietet eine flexible Checklisten-Funktion, mit der bestimmte Angaben für Accounts im Bewerbungsprozess verpflichtend abgefragt werden können. Jede Person in der Bewerbungsphase sieht im Header des Forums eine persönliche To-Do-Liste, die anzeigt, welche vom Team festgelegten Punkte noch zu erledigen sind. So behalten Bewerbende jederzeit den Überblick, was ihnen noch fehlt.<br>
 Die Farben der Checkliste werden vollständig über CSS gesteuert und können bei Bedarf an das eigene Forendesign angepasst werden. Bei den Haken und Kreuzen handelt es sich um einfache Zeichen, die wie Schriftzeichen behandelt werden. Diese Symbole können bei Bedarf in der Sprachdatei angepasst und ausgetauscht werden.<br>
 Die Checkliste wird vollständig über das ACP (RPG Erweiterungen » Checkliste für Bewerbungen) konfiguriert. Sie ist in Gruppen organisiert, die jeweils eigene Punkte enthalten.<br>
 <br>
