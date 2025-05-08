@@ -58,13 +58,13 @@ Die Checkliste wird vollständig über das ACP (RPG Erweiterungen » Checkliste 
 <b>Datenerfassungs-Optionen für Punkte</b><br>
 Für jeden Checklistenpunkt kannst du festlegen, <b>wie geprüft wird</b>, ob er erfüllt ist:<br>
 - Profilfeld (MyBB)
-- Steckbrieffeld (Katjas Plugin)
+- Steckbrieffeld (<a href="https://github.com/katjalennartz/application_ucp" target="_blank">Steckbriefe im UCP - risuena</a>)
 - Geburtstagsfeld (MyBB)
-- Uploadelement (Uploadsystem-Plugin)
+- Uploadelement (<a href="https://github.com/little-evil-genius/Upload-System" target="_blank">Uploadsystem - little.evil.genius</a>)
 - Eigene PHP-Abfrage - für individuellere Prüfungen (z.B. Joblisten)
 
 ### Eigene PHP-Abfragen (für Sonderfälle)
-Nicht alle Informationen lassen sich mit den Standardoptionen prüfen. Für solche Fälle kannst du eigene Datenbankabfragen definieren. Beispiel: Jobliste mit Katjas Plugin:<br>
+Nicht alle Informationen lassen sich mit den Standardoptionen prüfen. Für solche Fälle kannst du eigene Datenbankabfragen definieren. Beispiel: <a href="https://github.com/katjalennartz/jobliste/tree/main" target="_blank">Jobliste von risuena</<br>
 - Datenbanktabelle: Name der Tabelle, in der die Einträge gespeichert sind (jl_entry)
 - UID-Spalte: Name der Spalte, in der die User-IDs gespeichert sind (je_uid)
 - Überprüfungs-Spalte: Name der Spalte, in der geprüft wird, ob ein Eintrag vorhanden ist (je_position)
