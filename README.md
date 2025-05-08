@@ -1,5 +1,94 @@
 # Bewerbung-Manager
-Erstellt eine Bewerberliste und bietet eine Checkliste für die Bewerber. Es kann ein automatische "WoB" eingestellt werden.
+Das Plugin Bewerbungs-Manager bietet eine zentrale Verwaltung und Übersicht für alle Accounts im Bewerbungsprozess.<br>
+<br>
+<b>Zu den Hauptfunktionen gehören:</b>
+- Übersicht aller Bewerbungs-Accounts
+- individuelle Checkliste für den Bewerbungsprozess,
+- automatisches Annahme-Tool (WoB), das Bewerbungen annimmt und Accounts in die entsprechenden Gruppe verschiebt<br>
+<br>
+Alle drei Funktionen können in den Plugin-Einstellungen individuell aktiviert oder deaktiviert werden.
+
+## Übersicht aller Accounts im Bewerbungsprozess
+Das Plugin erstellt eine eigene Übersichtsseite, auf der alle Accounts im Bewerbungsprozess angezeigt werden. Diese werden in zwei Gruppen unterteilt:<br>
+- <b>Bewerbung ausstehend</b> - Hier erscheinen Accounts, die noch kein Bewerbungsthema im vorgesehenen Bereich erstellt haben.
+- <b>Unter Korrektur</b> - Hier erscheinen Accounts, deren Bewerbung (Thema) bereits im vorgesehenen Bereich erstellt wurden.
+
+In der Übersicht werden wichtige Informationen angezeigt:<br>
+- wie viele Tage die Fristen noch laufen
+- wie oft bereits verlängert wurde
+- welches Teammitglied korrigiert<br>
+<br>
+In den Einstellungen kannst du:
+- die Möglichkeit zur Verlängerung komplett deaktivieren
+- die maximale Anzahl an Verlängerungen festlegen
+- einstellen, ob User:innen die Frist eigenständig verlängern dürfen
+- ob User:innen die Anzahl der Verlängerungen von anderen Accounts sehen können<br>
+<br>
+Zusätzlich kann eine <b>Korrekturfrist</b> aktiviert werden. Diese startet automatisch, sobald ein Teammitglied im Bewerbungsthema einen Korrekturpost (über eine spezielle Eingabeoption beim Absenden eines Beitrags) erstellt. Auch hier kann optional festgelegt werden, ob User:innen die Frist selbst verlängern dürfen.<br>
+Sobald ein Teammitglied eine Bewerbung übernimmt, wird dies ebenfalls in der Übersicht angezeigt. Auf Wunsch kann in den Einstellungen festlegen, wie viele Tage Teammitglieder Zeit haben, sich um die jeweilige Bewerbung zu kümmern. Wenn diese Frist überschritten wird, wird automatisch einen Hinweisbanner für das entsprechende Teammitglied angezeigt, damit keine Bewerbung liegen bleibt.<br>
+Außerdem können automatische Banner-Benachrichtigungen eingerichtet werden, die User:innen rechtzeitig vor Ablauf der Bewerbungs- oder Korrekturfrist informieren.<br>
+<br>
+Im ACP (RPG Erweiterungen » Accounts im Bewerbungsprozess) gibt es zusätzlich die Möglichkeit, die Daten einzelner Accounts zu bearbeiten – Enddaten der Fristen, Anzahl der Verlängerungen oder das zugewiesene Teammitglied. Das erleichtert die Verwaltung bei individuellen Anfragen und spart den Umweg über die Datenbank.<br>
+
+### Hinweis!
+Diese Übersicht und Verwaltung ist nicht kompatibel mit dem <a href="https://github.com/katjalennartz/application_ucp" target="_blank">Steckbriefe im UCP von risuena</a>.
+
+## Checkliste
+Das Plugin bietet eine flexible Checklisten-Funktion, mit der bestimmte Angaben für Accounts im Bewerbungsprozess verpflichtend abgefragt werden können. Jede Person in der Bewerbungsphase sieht im Header des Forums eine persönliche To-Do-Liste, die anzeigt, welche vom Team festgelegten Punkte noch zu erledigen sind. So behalten Bewerber:innen jederzeit den Überblick, was ihnen noch fehlt.<br>
+Die Farben der Checkliste werden vollständig über CSS gesteuert und können bei Bedarf an das eigene Forendesign angepasst werden. Bei den Haken und Kreuzen handelt es sich um einfache Zeichen, die wie Schriftzeichen behandelt werden. Diese Symbole können bei Bedarf in der Sprachdatei angepasst und ausgetauscht werden.<br>
+Die Checkliste wird vollständig über das ACP (RPG Erweiterungen » Checkliste für Bewerbungen) konfiguriert. Sie ist in Gruppen organisiert, die jeweils eigene Punkte enthalten.<br>
+<br>
+<b>Beispiel:</b>
+- Gruppe: Grafiken - Punkte: Avatar, Mini-Icon, Profilbanner
+- Gruppe: Persönliches - Punkte: Spitzname, Postingtempo, Discord-Tag<br>
+<br>
+
+<b>Gruppen haben:</b><br>
+- einen Titel
+- optional eine Beschreibung (HTML ist erlaubt)
+- eine frei festlegbare Sortierreihenfolge<br>
+<br>
+
+<b>Punkte haben:</b><br>
+- einen eigenen Titel
+- eine Sortierung innerhalb der Gruppe
+- eine Datenerfassungs-Option
+<br>
+
+<b>Datenerfassungs-Optionen für Punkte</b><br>
+Für jeden Checklistenpunkt kannst du festlegen, <b>wie geprüft wird</b>, ob er erfüllt ist:<br>
+- Profilfeld (MyBB)
+- Steckbrieffeld (Katjas Plugin)
+- Geburtstagsfeld (MyBB)
+- Uploadelement (Uploadsystem-Plugin)
+- Eigene PHP-Abfrage - für individuellere Prüfungen (z.B. Joblisten)
+
+### Eigene PHP-Abfragen (für Sonderfälle)
+Nicht alle Informationen lassen sich mit den Standardoptionen prüfen. Für solche Fälle kannst du eigene Datenbankabfragen definieren. Beispiel: Jobliste mit Katjas Plugin:<br>
+- Datenbanktabelle: Name der Tabelle, in der die Einträge gespeichert sind (jl_entry)
+- UID-Spalte: Name der Spalte, in der die User-IDs gespeichert sind (je_uid)
+- Überprüfungs-Spalte: Name der Spalte, in der geprüft wird, ob ein Eintrag vorhanden ist (je_position)
+- Mehrfache Angabe (optional): Gibt an, wie oft ein Eintrag vorkommen muss (z.B. 2 für zwei Jobs). Wenn leer, reicht ein Eintrag aus.
+
+### Abhängigkeiten zwischen Gruppen-Punkte und Profilangaben
+In vielen Foren gibt es Bewerber:innen mit unterschiedlichen Gruppierunge (z.B. Werwölfe, Hexen, Vampire), die spezifische Informationen angeben müssen.<br>
+Das Plugin ermöglicht es, Punkte innherhalb einer Gruppen abhängig von bestimmten Profilangaben anzuzeigen.<br>
+
+<b>Beispiel:</b>
+- Werwölfe - Pflichtfelder: Prägung, Art, Rangordnung
+- Hexen - Pflichtfelder: Magieart, Tier
+- Vampire - Pflichtfelder: Verwandlungstag, Fähigkeit<br>
+
+<b>So funktioniert es:</b>
+- Aktiviere bei der Gruppe die Option "Spezifische Checklisten-Punkte".
+- Wähle ein Profilfeld oder Steckbrieffeld als Auswahlquelle aus.
+- Gib bei den einzelnen Punkten für diese Gruppe die Bedingung an, bei welchem Feldwert sie erscheinen sollen (z.B. "Hexe").<br>
+
+Am besten eignet sich ein Auswahlfeld mit festen Werten, um Tippfehler und uneinheitliche Angaben zu vermeiden.<br>
+Dadurch sieht die Person im Bewerbungsprozess nur die Punkte, die für ihre Auswahl relevant sind.
+
+### Hinweis!
+Die Checkliste lässt sich <b>problemlos</b> mit dem <a href="https://github.com/katjalennartz/application_ucp" target="_blank">Steckbriefe im UCP von risuena</a> kombinieren.
 
 # Vorrausetzung
 - Das ACP Modul <a href="https://github.com/little-evil-genius/rpgstuff_modul" target="_blank">RPG Stuff</a> <b>muss</b> vorhanden sein.
