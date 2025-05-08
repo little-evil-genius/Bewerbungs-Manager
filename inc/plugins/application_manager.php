@@ -4099,7 +4099,7 @@ function application_manager_automaticwob() {
         }
         // Extrafunktion
         else {
-            eval("\$wobtext_extra = \"".$templates->get("applicationmanagerwob_text")."\";");
+            eval("\$wobtext_extra = \"".$templates->get("applicationmanager_wob_text")."\";");
             $editButton = "<a href=\"#application_manager_wob\">".$lang->application_manager_wobtext_notice_editButton."</a>";
             $wobtext_notice = $lang->sprintf($lang->application_manager_wobtext_notice_edit, $editButton);
         }
