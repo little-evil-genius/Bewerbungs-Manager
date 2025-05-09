@@ -11,9 +11,9 @@ if(!defined("IN_MYBB"))
 	die("Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.");
 }
 
-// ini_set('display_errors', 1);
-// ini_set('display_startup_errors', 1);
-// error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
 // HOOKS
 $plugins->add_hook("admin_config_settings_change", "application_manager_settings_change");
@@ -1111,23 +1111,25 @@ function application_manager_admin_manage() {
                         'profilefield', array(), array('id' => 'row_profilefield')
                     );
                 }    
-            }
+            }    
             // Uploadelement
-            $count_uploadelements = $db->num_rows($field_options['query_uploadelements']);
-            if ($count_uploadelements > 0) {
-                $form_container->output_row(
-                    $lang->application_manager_field_form_upload,
-                    $lang->application_manager_field_form_upload_desc, 
-                    $form->generate_select_box('uploadelement', $field_options['uploadelements_list'], $mybb->get_input('uploadelement'), array('id' => 'uploadelement', 'size' => 5)),
-                    'uploadelement', array(), array('id' => 'row_uploadelement')
-                );
-            } else {
-                $form_container->output_row(
-                    $lang->application_manager_field_form_upload,
-                    $lang->application_manager_field_form_upload_desc, 
-                    $form->generate_select_box('uploadelement', $field_options['nonefields_list'], $mybb->get_input('uploadelement'), array('id' => 'uploadelement')),
-                    'uploadelement', array(), array('id' => 'row_uploadelement')
-                );
+            if ($db->table_exists("uploadsystem")) {
+                $count_uploadelements = $db->num_rows($field_options['query_uploadelements']);
+                if ($count_uploadelements > 0) {
+                    $form_container->output_row(
+                        $lang->application_manager_field_form_upload,
+                        $lang->application_manager_field_form_upload_desc, 
+                        $form->generate_select_box('uploadelement', $field_options['uploadelements_list'], $mybb->get_input('uploadelement'), array('id' => 'uploadelement', 'size' => 5)),
+                        'uploadelement', array(), array('id' => 'row_uploadelement')
+                    );
+                } else {
+                    $form_container->output_row(
+                        $lang->application_manager_field_form_upload,
+                        $lang->application_manager_field_form_upload_desc, 
+                        $form->generate_select_box('uploadelement', $field_options['nonefields_list'], $mybb->get_input('uploadelement'), array('id' => 'uploadelement')),
+                        'uploadelement', array(), array('id' => 'row_uploadelement')
+                    );
+                }
             }
             // eigener PHP Kram
             // Tabelle
@@ -1457,21 +1459,23 @@ function application_manager_admin_manage() {
                 }    
             }
             // Uploadelement
-            $count_uploadelements = $db->num_rows($field_options['query_uploadelements']);
-            if ($count_uploadelements > 0) {
-                $form_container->output_row(
-                    $lang->application_manager_field_form_upload,
-                    $lang->application_manager_field_form_upload_desc,
-                    $form->generate_select_box('uploadelement', $field_options['uploadelements_list'], $field['field'], array('id' => 'uploadelement', 'size' => 5)),
-                    'uploadelement', array(), array('id' => 'row_uploadelement')
-                );
-            } else {
-                $form_container->output_row(
-                    $lang->application_manager_field_form_upload,
-                    $lang->application_manager_field_form_upload_desc,
-                    $form->generate_select_box('uploadelement', $field_options['nonefields_list'], $field['field'], array('id' => 'uploadelement')),
-                    'uploadelement', array(), array('id' => 'row_uploadelement')
-                );
+            if ($db->table_exists("uploadsystem")) {
+                $count_uploadelements = $db->num_rows($field_options['query_uploadelements']);
+                if ($count_uploadelements > 0) {
+                    $form_container->output_row(
+                        $lang->application_manager_field_form_upload,
+                        $lang->application_manager_field_form_upload_desc,
+                        $form->generate_select_box('uploadelement', $field_options['uploadelements_list'], $field['field'], array('id' => 'uploadelement', 'size' => 5)),
+                        'uploadelement', array(), array('id' => 'row_uploadelement')
+                    );
+                } else {           
+                    $form_container->output_row(
+                        $lang->application_manager_field_form_upload,
+                        $lang->application_manager_field_form_upload_desc,
+                        $form->generate_select_box('uploadelement', $field_options['nonefields_list'], $field['field'], array('id' => 'uploadelement')),
+                        'uploadelement', array(), array('id' => 'row_uploadelement')
+                    );
+                }
             }
             // eigener PHP Kram
             // Tabelle
@@ -4448,6 +4452,8 @@ function application_manager_acp_fieldoptions($fid = '') {
     // Uploadsystem
     if (!$db->table_exists("uploadsystem")) {
         unset($dataselect_list["upload"]);
+        $uploadelements_list = "";
+        $query_uploadelements = "";
     } else {
         // Passende Uploadelemente auslesen
         $query_uploadelements = $db->query("SELECT * FROM ".TABLE_PREFIX."uploadsystem
@@ -4492,7 +4498,7 @@ function application_manager_acp_fieldoptions($fid = '') {
     }
 
     $nonefields_list = array(
-        "full" => $lang->playerdirectory_manage_add_nonefields,
+        "full" => $lang->application_manager_field_form_nonelist,
     );
 
     return [
