@@ -8,7 +8,7 @@ function task_application_manager($task){
     $control_period = $mybb->settings['application_manager_control_period'];
 
     // Neue Bewerber hinzufügen
-    $newApplicants = $db->query("SELECT * FROM ".TABLE_PREFIX."users
+    $newApplicants = $db->query("SELECT regdate, uid FROM ".TABLE_PREFIX."users
     WHERE usergroup = ".$applicationgroup."
     AND uid NOT IN(SELECT uid FROM ".TABLE_PREFIX."application_manager)
     ");
