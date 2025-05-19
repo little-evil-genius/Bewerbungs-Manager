@@ -38,6 +38,7 @@ $plugins->add_hook('showthread_start', 'application_manager_automaticwob');
 $plugins->add_hook("fetch_wol_activity_end", "application_manager_online_activity");
 $plugins->add_hook("build_friendly_wol_location_end", "application_manager_online_location");
 $plugins->add_hook("admin_user_users_delete_commit_end", "application_manager_user_delete");
+$plugins->add_hook("datahandler_user_insert_end", "application_manager_user_insert");
  
 // Die Informationen, die im Pluginmanager angezeigt werden
 function application_manager_info(){
@@ -2226,8 +2227,6 @@ function application_manager_admin_update_plugin(&$table) {
 
             // Ob im Master Style die Überprüfung vorhanden ist
             $masterstylesheet = $db->fetch_field($db->query("SELECT stylesheet FROM ".TABLE_PREFIX."themestylesheets WHERE tid = 1 AND name = 'application_manager.css'"), "stylesheet");
-            $masterstylesheet = (string)($masterstylesheet ?? '');
-            $update_string = (string)($update_string ?? '');
             $pos = strpos($masterstylesheet, $update_string);
             if ($pos === false) { // nicht vorhanden 
             
@@ -4277,6 +4276,37 @@ function application_manager_user_delete() {
     $deleteChara = (int)$user['uid'];
 
     $db->delete_query("application_manager", "uid = '".$deleteChara."'");
+}
+
+// NEUER USER REGISTIERT SICH => ZEILE IN DB ERSTELLEN
+function application_manager_user_insert(&$userhandler){
+    
+    global $db, $mybb;
+
+    // Userdaten holen
+    $user = $userhandler->data;
+    $uid = (int)$userhandler->uid;
+    $regdate = (int)$user['regdate'];
+
+    $control_period = $mybb->settings['application_manager_control_period'];
+
+    // Datum berechnen
+    if (is_numeric($regdate)) {
+        $regDate = new DateTime();
+        $regDate->setTimestamp((int)$regdate);
+    } else {
+        $regDate = new DateTime($regdate);
+    }
+    $regDate->setTime(0, 0, 0);
+    $regDate->modify("+{$control_period} days");
+    $application_deadline = $db->escape_string($regDate->format("Y-m-d"));
+
+    $insertApplicant = array(
+        'uid' => $uid,
+        'application_deadline' => $application_deadline,
+    );
+
+    $db->insert_query('application_manager', $insertApplicant);
 }
 
 #########################
