@@ -2422,7 +2422,7 @@ function application_manager_checklist() {
 
                 // ignorierende Angaben beachten
                 if (!empty($ignor_option)) {
-                    $expoptions = application_manager_ignoroptions('application', $fieldID, $ignor_option);
+                    $expoptions = application_manager_ignoroptions('application', $fieldid, $ignor_option);
 
                     if (in_array($requirementCheck, $expoptions)) {
                         $requirementcheck = $requirementCheck;
