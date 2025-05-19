@@ -39,6 +39,7 @@ $plugins->add_hook("fetch_wol_activity_end", "application_manager_online_activit
 $plugins->add_hook("build_friendly_wol_location_end", "application_manager_online_location");
 $plugins->add_hook("admin_user_users_delete_commit_end", "application_manager_user_delete");
 $plugins->add_hook("datahandler_user_insert_end", "application_manager_user_insert");
+$plugins->add_hook("datahandler_user_update", "application_manager_user_update");
  
 // Die Informationen, die im Pluginmanager angezeigt werden
 function application_manager_info(){
@@ -989,6 +990,7 @@ function application_manager_admin_manage() {
                     }
                     // eigener PHP Kram
                     else if ($mybb->get_input('dataselect') == "php") {
+                        $data = "php";
                         if(!empty($mybb->get_input('php_count'))) {
                             $phpcount = $mybb->get_input('php_count');
                         } else {
@@ -1300,6 +1302,7 @@ function application_manager_admin_manage() {
                         }
                         // eigener PHP Kram
                         else if ($mybb->get_input('dataselect') == "php") {
+                            $data = "php";
                             if(!empty($mybb->get_input('php_count'))) {
                                 $phpcount = $mybb->get_input('php_count');
                             } else {
@@ -4327,6 +4330,42 @@ function application_manager_user_insert(&$userhandler){
     );
 
     $db->insert_query('application_manager', $insertApplicant);
+}
+
+// ACCOUNT WIRD IM ACP AUF BEWERBUNGSGRUPPE GESETZT
+function application_manager_user_update($datahandler) {
+
+    global $db, $user, $mybb;
+
+    // neue Benutzergruppe
+    $new_usergroup = $datahandler->user_update_data['usergroup'];
+
+    // alte Userdaten
+    $uid = $datahandler->data['uid'];
+    $old_user = get_user($uid);
+
+    if (!empty($new_usergroup) && $new_usergroup != $old_user['usergroup']) {
+
+        $applicationgroup = $mybb->settings['application_manager_applicationgroup'];
+
+        // nur bei Bewerbergruppe
+        if ($new_usergroup == $applicationgroup) {
+            $control_period = $mybb->settings['application_manager_control_period'];
+
+            // Datum berechnen
+            $today = new DateTime();
+            $today->setTime(0, 0, 0);
+            $today->modify("+{$control_period} days");
+            $application_deadline = $db->escape_string($today->format("Y-m-d"));
+
+            $insertApplicant = array(
+                'uid' => $uid,
+                'application_deadline' => $application_deadline,
+            );
+
+            $db->insert_query('application_manager', $insertApplicant);
+        }
+    }
 }
 
 #########################
