@@ -201,7 +201,7 @@ function application_manager_activate(){
     find_replace_templatesets('header', '#'.preg_quote('{$awaitingusers}').'#', '{$awaitingusers} {$application_checklist}{$application_checklist_banner}{$application_openAlert}{$application_team_reminder}{$application_deadline_reminder}');
     find_replace_templatesets('newreply', '#'.preg_quote('<input type="submit" class="button" name="submit').'#', '{$application_correction} <input type="submit" class="button" name="submit"');
     find_replace_templatesets('showthread', '#<tr>\s*<td class="tfoot">#', '{$application_wob}<tr><td class="tfoot">');
-    find_replace_templatesets('showthread', '#'.preg_quote('{$thread[\'subject\']}').'#', '{$thread[\'subject\']}{$application_corrector}');
+    find_replace_templatesets('showthread', '#'.preg_quote('{$thread[\'subject\']}</strong>').'#', '{$thread[\'subject\']}</strong>{$application_corrector}');
 	find_replace_templatesets('showthread_quickreply', '#'.preg_quote('<input type="submit" class="button" value="{$lang->post_reply}"').'#', '{$application_correction} <input type="submit" class="button" value="{$lang->post_reply}"');
 }
  
@@ -343,7 +343,7 @@ function application_manager_admin_manage() {
 
         // Add to page navigation
 		$page->add_breadcrumb_item($lang->application_manager_breadcrumb_main, "index.php?module=rpgstuff-application_manager");
-
+        
         // ÜBERSICHT
 		if ($mybb->get_input('action') == "" || !$mybb->get_input('action')) {
 
@@ -2940,10 +2940,13 @@ function application_manager_misc() {
 
             // keine Korrekturfrist
             if ($control_correction == 0) {
-                $StartDate = new DateTime($correction_start);
-                $StartDate->setTime(0, 0, 0);
-                $startDate = $lang->sprintf($lang->application_manager_overview_correction_startDate, $StartDate->format('d.m.Y'));
-
+                if (!empty($correction_start)) {
+                    $StartDate = new DateTime($correction_start);
+                    $StartDate->setTime(0, 0, 0);
+                    $startDate = $lang->sprintf($lang->application_manager_overview_correction_startDate, $StartDate->format('d.m.Y'));
+                } else {
+                    $startDate = "";
+                }
                 eval("\$correction_applications .= \"".$templates->get("applicationmanager_overview_correction")."\";");
             } else {
 
@@ -3174,6 +3177,8 @@ function application_manager_misc() {
     // Automatisches WoB => Neuer Post
     if ($mybb->input['action'] == "application_manager_wob") {
 
+        echo "Gruppe:".$mybb->get_input('usergroup');
+
         // Nur Benutzergruppen updaten
         if ($mybb->get_input('wob_answer') == 0) {
             
@@ -3220,7 +3225,7 @@ function application_manager_misc() {
 
             // Set the data of the user in the datahandler.
             $userhandler->set_data($updated_user);
-            $errors = '';
+            $errors = 'Error';
 
             // Validate the user and get any errors that might have occurred.
             if($userhandler->validate_user()) {
@@ -3448,7 +3453,7 @@ function application_manager_misc() {
 
                 // Set the data of the user in the datahandler.
                 $userhandler->set_data($updated_user);
-                $errors = '';
+                $errors = 'Error';
     
                 // Validate the user and get any errors that might have occurred.
                 if($userhandler->validate_user()) {
