@@ -3181,8 +3181,6 @@ function application_manager_misc() {
     // Automatisches WoB => Neuer Post
     if ($mybb->input['action'] == "application_manager_wob") {
 
-        echo "Gruppe:".$mybb->get_input('usergroup');
-
         // Nur Benutzergruppen updaten
         if ($mybb->get_input('wob_answer') == 0) {
             
@@ -3229,7 +3227,7 @@ function application_manager_misc() {
 
             // Set the data of the user in the datahandler.
             $userhandler->set_data($updated_user);
-            $errors = 'Error';
+            $errors = '';
 
             // Validate the user and get any errors that might have occurred.
             if($userhandler->validate_user()) {
