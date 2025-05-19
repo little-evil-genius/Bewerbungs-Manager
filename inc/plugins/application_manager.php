@@ -692,7 +692,8 @@ function application_manager_admin_manage() {
                     if ($mybb->get_input('requirement', MyBB::INPUT_INT) == 1) {
                         if(!empty($mybb->get_input('profilefield'))) {
                             $update_group['requirement'] = $db->escape_string($mybb->get_input('profilefield'));
-                        } else {
+                        }
+                        if(!empty($mybb->get_input('applicationfield'))) {
                             $update_group['requirement'] = $db->escape_string($mybb->get_input('applicationfield'));
                         }
                         $update_group['ignor_option'] = $db->escape_string($mybb->get_input('ignor_option'));
