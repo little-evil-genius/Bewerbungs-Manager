@@ -4772,11 +4772,11 @@ function application_manager_database() {
     if (!$db->table_exists("application_checklist_groups")) {
         $db->query("CREATE TABLE ".TABLE_PREFIX."application_checklist_groups (
             `gid` int(10) NOT NULL AUTO_INCREMENT, 
-            `title` VARCHAR(100) NOT NULL,
-            `description` VARCHAR(500) NOT NULL,
+            `title` VARCHAR(100) NOT NULL DEFAULT '',
+            `description` VARCHAR(500) NOT NULL DEFAULT '',
             `disporder` int(5) NOT NULL DEFAULT '0',
-            `requirement` VARCHAR(100) NOT NULL,
-            `ignor_option` VARCHAR(100) NOT NULL,
+            `requirement` VARCHAR(100) NOT NULL DEFAULT '',
+            `ignor_option` VARCHAR(100) NOT NULL DEFAULT '',
             PRIMARY KEY(`gid`),
             KEY `gid` (`gid`)
             )
@@ -4788,12 +4788,12 @@ function application_manager_database() {
         $db->query("CREATE TABLE ".TABLE_PREFIX."application_checklist_fields (
             `fid` int(10) NOT NULL AUTO_INCREMENT, 
             `gid` int(10) NOT NULL,
-            `title` VARCHAR(100) NOT NULL,
+            `title` VARCHAR(100) NOT NULL DEFAULT '',
             `disporder` int(5) NOT NULL DEFAULT '0',
-            `data` VARCHAR(100) NOT NULL,
-            `field` VARCHAR(100) NOT NULL,
-            `field_condition` VARCHAR(100) NOT NULL,
-            `ignor_option` VARCHAR(500) NOT NULL,
+            `data` VARCHAR(100) NOT NULL DEFAULT '',
+            `field` VARCHAR(100) NOT NULL DEFAULT '',
+            `field_condition` VARCHAR(100) NOT NULL DEFAULT '',
+            `ignor_option` VARCHAR(500) NOT NULL DEFAULT '',
             PRIMARY KEY(`fid`),
             KEY `fid` (`fid`)
             )
