@@ -3800,6 +3800,7 @@ function application_manager_forumdisplay_thread() {
 
     // EINSTELLUNGEN
     $applicationforum = $mybb->settings['application_manager_applicationforum'];
+    $applicationgroup = $mybb->settings['application_manager_applicationgroup'];
     $control_setting = $mybb->settings['application_manager_control'];
     $teamgroup = $mybb->settings['application_manager_team'];
 
@@ -3819,6 +3820,13 @@ function application_manager_forumdisplay_thread() {
     }
 
     if ($applicationforum != $fid || $control_setting == 0 || $excluded_check) {
+        $application_corrector = "";
+        $applicationPlus = "";
+        return;
+    }
+
+    $groupCheck = $db->fetch_field($db->simple_select("users", "usergroup", "uid = ".$thread['uid']), "usergroup");
+    if ($groupCheck != $applicationgroup) {
         $application_corrector = "";
         $applicationPlus = "";
         return;
@@ -4116,6 +4124,7 @@ function application_manager_automaticwob() {
     // EINSTELLUNGEN
     $teamgroup = $mybb->settings['application_manager_team'];
     $applicationforum = $mybb->settings['application_manager_applicationforum'];
+    $applicationgroup = $mybb->settings['application_manager_applicationgroup'];
     $control_setting = $mybb->settings['application_manager_control'];
     $wob_setting = $mybb->settings['application_manager_wob'];
     $grouplist_primary = $mybb->settings['application_manager_wob_primary'];
@@ -4139,6 +4148,12 @@ function application_manager_automaticwob() {
     }
 
     if ($applicationforum != $fid || $wob_setting == 0 || $excluded_check) {
+        $application_wob = "";
+        return;
+    }
+
+    $groupCheck = $db->fetch_field($db->simple_select("users", "usergroup", "uid = ".$thread['uid']), "usergroup");
+    if ($groupCheck != $applicationgroup) {
         $application_wob = "";
         return;
     }
