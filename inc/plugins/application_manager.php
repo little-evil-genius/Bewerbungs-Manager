@@ -579,7 +579,7 @@ function application_manager_admin_manage() {
             $form_container->output_row(
 				$lang->application_manager_group_form_requirement,
 				$lang->application_manager_group_form_requirement_desc,
-                $form->generate_yes_no_radio('requirement', $mybb->get_input('requirement', MyBB::INPUT_INT), array('id' => 'requirement')),
+                $form->generate_yes_no_radio('requirement', $mybb->get_input('requirement', MyBB::INPUT_INT), array('id' => 'requirement'))
 			);
             // Steckfeld oder Profilfeld - auswahl nur, wenn Stecki vorhanden ist
             if ($db->table_exists("application_ucp_fields")) {
@@ -791,7 +791,7 @@ function application_manager_admin_manage() {
             $form_container->output_row(
 				$lang->application_manager_group_form_requirement,
 				$lang->application_manager_group_form_requirement_desc,
-                $form->generate_yes_no_radio('requirement', $requirement, array('id' => 'requirement')),
+                $form->generate_yes_no_radio('requirement', $requirement, array('id' => 'requirement'))
 			);
             // Steckfeld oder Profilfeld - auswahl nur, wenn Stecki vorhanden ist
             if ($db->table_exists("application_ucp_fields")) {
