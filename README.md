@@ -201,6 +201,7 @@ Alle Templates wurden größtenteils ohne Tabellen-Struktur gecodet. Das Layout 
 - header: {$application_checklist} & {$application_openAlert} & {$application_team_reminder} & {$application_deadline_reminder}
 - newreply: {$application_correction}
 - showthread: {$application_wob} & {$application_corrector} & {$application_correction}
+- editpost: {$application_hidden}
 
 # Neues CSS - application_manager.css
 Es wird automatisch in jedes bestehende und neue Design hinzugefügt. Man sollte es einfach einmal abspeichern - auch im Default. Nach einem MyBB Upgrade fehlt der Stylesheets im Masterstyle? Im ACP Modul "RPG Erweiterungen" befindet sich der Menüpunkt "Stylesheets überprüfen" und kann von hinterlegten Plugins den Stylesheet wieder hinzufügen.
