@@ -2494,7 +2494,7 @@ function application_manager_checklist() {
 
                 // ignorierende Angaben beachten
                 if (!empty($ignor_option)) {
-                    $expoptions = application_manager_ignoroptions('profile', $requirement, $ignor_option);
+                    $expoptions = application_manager_ignoroptions('profile', $fieldID, $ignor_option);
 
                     if (in_array($fieldcheck, $expoptions)) {
                         $pointstatus = $lang->application_manager_checklist_fieldCheck;
@@ -2521,7 +2521,7 @@ function application_manager_checklist() {
 
                 // ignorierende Angaben beachten
                 if (!empty($ignor_option)) {
-                    $expoptions = application_manager_ignoroptions('application', $fieldID, $ignor_option);
+                    $expoptions = application_manager_ignoroptions('application', $fieldid, $ignor_option);
 
                     if (in_array($fieldcheck, $expoptions)) {
                         $pointstatus = $lang->application_manager_checklist_fieldCheck;
