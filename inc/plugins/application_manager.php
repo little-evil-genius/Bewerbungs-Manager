@@ -11,10 +11,6 @@ if(!defined("IN_MYBB"))
 	die("Direct initialization of this file is not allowed.<br /><br />Please make sure IN_MYBB is defined.");
 }
 
-// ini_set('display_errors', 1);
-// ini_set('display_startup_errors', 1);
-// error_reporting(E_ALL);
-
 // HOOKS
 $plugins->add_hook("admin_config_settings_change", "application_manager_settings_change");
 $plugins->add_hook("admin_settings_print_peekers", "application_manager_settings_peek");
@@ -34,6 +30,7 @@ $plugins->add_hook("newreply_start", "application_manager_newreply");
 $plugins->add_hook("newreply_do_newreply_end", "application_manager_do_newreply");
 $plugins->add_hook("datahandler_post_validate_post", "application_manager_validate_post");
 $plugins->add_hook('newthread_do_newthread_end', 'application_manager_do_newthread');
+$plugins->add_hook('editpost_end', 'application_manager_editpost');
 $plugins->add_hook('showthread_start', 'application_manager_automaticwob');
 $plugins->add_hook("fetch_wol_activity_end", "application_manager_online_activity");
 $plugins->add_hook("build_friendly_wol_location_end", "application_manager_online_location");
@@ -204,6 +201,7 @@ function application_manager_activate(){
     find_replace_templatesets('showthread', '#<tr>\s*<td class="tfoot">#', '{$application_wob}<tr><td class="tfoot">');
     find_replace_templatesets('showthread', '#'.preg_quote('{$thread[\'subject\']}</strong>').'#', '{$thread[\'subject\']}</strong>{$application_corrector}');
 	find_replace_templatesets('showthread_quickreply', '#'.preg_quote('<input type="submit" class="button" value="{$lang->post_reply}"').'#', '{$application_correction} <input type="submit" class="button" value="{$lang->post_reply}"');
+    find_replace_templatesets('editpost', '#'.preg_quote('{$editreason}"').'#', '{$editreason}{$application_hidden}"');
 }
  
 // Diese Funktion wird aufgerufen, wenn das Plugin deaktiviert wird.
@@ -225,6 +223,7 @@ function application_manager_deactivate(){
 	find_replace_templatesets("showthread", "#".preg_quote('{$application_wob}')."#i", '', 0);
 	find_replace_templatesets("showthread", "#".preg_quote('{$application_corrector}')."#i", '', 0);
 	find_replace_templatesets("showthread_quickreply", "#".preg_quote('{$application_correction}')."#i", '', 0);
+	find_replace_templatesets("editpost", "#".preg_quote('{$application_hidden}')."#i", '', 0);
 
 }
 
@@ -4024,23 +4023,25 @@ function application_manager_validate_post(&$dh) {
         $excluded_check = false;
     }
 
-    if ($applicationforum == $fid) {
-        if ($control_setting == 1 || $control_correction == 1 || $excluded_check) {
-            $application_query = $db->simple_select("application_manager", "correction_deadline, corrector", "uid = '".$thread['uid']."'");    
-            $application = $db->fetch_array($application_query);
-            
-            $userids_array = application_manager_get_allchars($mybb->user['uid']);
+    if ($applicationforum != $fid) return;
+    if ($control_setting == 0) return;
+    if ($control_correction == 0) return;
+    if ($excluded_check == 0) return;
+
+    $application_query = $db->simple_select("application_manager", "correction_deadline, corrector", "uid = '".$thread['uid']."'");            
+    $application = $db->fetch_array($application_query);
+                
+    $userids_array = application_manager_get_allchars($mybb->user['uid']);
         
-            if (array_key_exists($application['corrector'], $userids_array)) {
-                if(!$mybb->get_input('correctionTeam')) {
-                    $dh->set_error($lang->application_manager_validate_team);
-                }
-            }
-            if (array_key_exists($thread['uid'], $userids_array)) {
-                if(!$mybb->get_input('correctionUser')) {
-                    $dh->set_error($lang->application_manager_validate_user);
-                }
-            }
+    if (array_key_exists($application['corrector'], $userids_array)) {
+        if(!$mybb->get_input('correctionTeam')) {
+            $dh->set_error($lang->application_manager_validate_team);
+        }
+    }
+    
+    if (array_key_exists($thread['uid'], $userids_array)) {
+        if(!$mybb->get_input('correctionUser')) {
+            $dh->set_error($lang->application_manager_validate_user);
         }
     }
 }
@@ -4119,6 +4120,35 @@ function application_manager_do_newreply() {
             }
         }
     }
+}
+
+// BEARBEITUNG - HIDDEN INPUT
+function application_manager_editpost() {
+
+    global $templates, $mybb, $lang, $forum, $db, $thread, $pid, $application_hidden;
+
+    // EINSTELLUNGEN
+    $applicationforum = $mybb->settings['application_manager_applicationforum'];
+    $control_setting = $mybb->settings['application_manager_control'];
+    $control_correction = $mybb->settings['application_manager_control_correction'];
+
+    if ($mybb->settings['application_manager_excludedaccounts'] != 0) {
+        $excludedaccounts = str_replace(", ", ",", $mybb->settings['application_manager_excludedaccounts']);
+        $excludedaccounts = explode(",", $excludedaccounts);
+        if (in_array($thread['uid'], $excludedaccounts)) {
+            $excluded_check = true;
+        } else {
+            $excluded_check = false;
+        }
+    } else {
+        $excluded_check = false;
+    }
+
+    if ($applicationforum != $thread['fid'] || $control_setting == 0 || $control_correction == 0 || $excluded_check) {
+        return;
+    }
+
+    $application_hidden = "<input type=\"hidden\" name=\"correctionTeam\" value=\"none\" /><input type=\"hidden\" name=\"correctionUser\" value=\"none\" />";
 }
 
 // AUTOMATISCHES WOB //
@@ -4349,6 +4379,9 @@ function application_manager_user_update($datahandler) {
 
         // nur bei Bewerbergruppe
         if ($new_usergroup == $applicationgroup) {
+            // sicherheitshalber löschen
+            $db->delete_query("application_manager", "uid = ".$uid);
+
             $control_period = $mybb->settings['application_manager_control_period'];
 
             // Datum berechnen
@@ -5232,7 +5265,7 @@ function application_manager_templates($mode = '') {
 
     $templates[] = array(
         'title'		=> 'applicationmanager_showthread_correction',
-        'template'	=> $db->escape_string('<select name="{$selectName}" id="{$selectName}">
+        'template'	=> $db->escape_string('<select name="{$selectName}" id="{$selectName}" required>
         <option value="">{$lang->application_manager_showthread_select}</option>
         <option value="none" {$correctionoptionNone}>{$lang->application_manager_showthread_selectNone}</option>
         <option value="post" {$correctionoptionPost}>{$lang->application_manager_showthread_selectPost}</option>
