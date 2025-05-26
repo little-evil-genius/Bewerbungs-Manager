@@ -4366,6 +4366,10 @@ function application_manager_user_update($datahandler) {
 
     global $db, $user, $mybb;
 
+    if (!isset($datahandler->user_update_data['usergroup'])) {
+        return;
+    }
+
     // neue Benutzergruppe
     $new_usergroup = $datahandler->user_update_data['usergroup'];
 
