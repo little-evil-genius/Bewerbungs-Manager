@@ -34,7 +34,7 @@ $plugins->add_hook('editpost_end', 'application_manager_editpost');
 $plugins->add_hook('showthread_start', 'application_manager_automaticwob');
 $plugins->add_hook("fetch_wol_activity_end", "application_manager_online_activity");
 $plugins->add_hook("build_friendly_wol_location_end", "application_manager_online_location");
-$plugins->add_hook("admin_user_users_delete_commit_end", "application_manager_user_delete");
+$plugins->add_hook('datahandler_user_delete_end', 'application_manager_user_deleted');
 $plugins->add_hook("datahandler_user_insert_end", "application_manager_user_insert");
 $plugins->add_hook("datahandler_user_update", "application_manager_user_update");
  
@@ -47,7 +47,7 @@ function application_manager_info(){
 		"website"	=> "https://github.com/little-evil-genius/Bewerbungs-Manager",
 		"author"	=> "little.evil.genius",
 		"authorsite"	=> "https://storming-gates.de/member.php?action=profile&uid=1712",
-		"version"	=> "1.0",
+		"version"	=> "1.0.1",
 		"compatibility" => "18*"
 	);
 }
@@ -99,25 +99,6 @@ function application_manager_install(){
     $db->insert_query("templategroups", $templategroup);
     // Templates 
     application_manager_templates();
-
-	// Task hinzufügen
-    $date = new DateTime(date("d.m.Y", strtotime('+1 hour')));
-    $date->setTime(1, 0, 0);
-    $applicationmanagerTask = array(
-        'title' => 'Bewerbungs-Manager',
-        'description' => 'füllt und bereinigt die Tabelle für den Bewerbungs-Manager',
-        'file' => 'application_manager',
-        'minute' => '*',
-        'hour' => '*',
-        'day' => '*',
-        'month' => '*',
-        'weekday' => '*',
-        'nextrun' => $date->getTimestamp(),
-        'logging' => 1,
-        'locked' => 0
-    );
-    $db->insert_query('tasks', $applicationmanagerTask);
-    $cache->update_tasks();
     
     // STYLESHEET HINZUFÜGEN
 	require_once MYBB_ADMIN_DIR."inc/functions_themes.php";
@@ -1659,7 +1640,7 @@ function application_manager_admin_manage() {
                             $startline = new DateTime($applicants['correction_start']);
                             $startline->setTime(0, 0, 0);
                             $StartDate = $startline->format('d.m.Y');
-                            $form_container->output_cell($lang->application_manager_user_under." seit ".$StartDate, array("colspan" => 2, 'style' => 'text-align: center;'));
+                            $form_container->output_cell($lang->application_manager_user_under." seit ".$StartDate, array('style' => 'text-align: center;'));
                         }
                             
                         $corrector = application_manager_correctorname($applicants['corrector']);
@@ -2265,6 +2246,10 @@ function application_manager_admin_update_plugin(&$table) {
 
         // Datenbanktabellen & Felder
         application_manager_database();
+
+        // TASK LÖSCHEN
+        $db->delete_query('tasks', "file='application_manager'");
+        $cache->update_tasks();
 
         flash_message($lang->plugins_flash, "success");
         admin_redirect("index.php?module=rpgstuff-plugin_updates");
@@ -4321,13 +4306,17 @@ function application_manager_online_location($plugin_array) {
 }
 
 // WAS PASSIERT MIT EINEM GELÖSCHTEN USER
-function application_manager_user_delete() {
+function application_manager_user_deleted($userhandler) {
 
-    global $db, $user;
+    global $db;
 
-    $deleteChara = (int)$user['uid'];
+    $uids = $userhandler->delete_uids;
+    $uid_list = explode(',', $uids);
 
-    $db->delete_query("application_manager", "uid = '".$deleteChara."'");
+    foreach ($uid_list as $uid) {
+        $deleteChara = (int)$uid;
+        $db->delete_query("application_manager", "uid = '".$deleteChara."'");
+    }
 }
 
 // NEUER USER REGISTIERT SICH => ZEILE IN DB ERSTELLEN
@@ -4361,7 +4350,7 @@ function application_manager_user_insert(&$userhandler){
     $db->insert_query('application_manager', $insertApplicant);
 }
 
-// ACCOUNT WIRD IM ACP AUF BEWERBUNGSGRUPPE GESETZT
+// ACCOUNT WIRD IM ACP AUF BEWERBUNGSGRUPPE GESETZT && WIRD IM ACP ANGENOMMEN
 function application_manager_user_update($datahandler) {
 
     global $db, $user, $mybb;
@@ -4372,16 +4361,16 @@ function application_manager_user_update($datahandler) {
 
     // neue Benutzergruppe
     $new_usergroup = $datahandler->user_update_data['usergroup'];
+    $applicationgroup = (int)$mybb->settings['application_manager_applicationgroup'];
 
     // alte Userdaten
     $uid = $datahandler->data['uid'];
     $old_user = get_user($uid);
+    $old_usergroup = (int)$old_user['usergroup'];
 
-    if (!empty($new_usergroup) && $new_usergroup != $old_user['usergroup']) {
+    if (!empty($new_usergroup) && $new_usergroup != $old_usergroup) {
 
-        $applicationgroup = $mybb->settings['application_manager_applicationgroup'];
-
-        // nur bei Bewerbergruppe
+        // wird Bewerber
         if ($new_usergroup == $applicationgroup) {
             // sicherheitshalber löschen
             $db->delete_query("application_manager", "uid = ".$uid);
@@ -4400,6 +4389,11 @@ function application_manager_user_update($datahandler) {
             );
 
             $db->insert_query('application_manager', $insertApplicant);
+        }
+
+        // wird angenommen != Bewerber
+        if ($old_usergroup === $applicationgroup && $new_usergroup !== $applicationgroup) {
+            $db->delete_query("application_manager", "uid = '".$uid."'");
         }
     }
 }
