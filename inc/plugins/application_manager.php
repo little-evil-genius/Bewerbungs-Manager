@@ -47,7 +47,7 @@ function application_manager_info(){
 		"website"	=> "https://github.com/little-evil-genius/Bewerbungs-Manager",
 		"author"	=> "little.evil.genius",
 		"authorsite"	=> "https://storming-gates.de/member.php?action=profile&uid=1712",
-		"version"	=> "1.0.1",
+		"version"	=> "1.0.2",
 		"compatibility" => "18*"
 	);
 }
@@ -177,12 +177,12 @@ function application_manager_activate(){
     // VARIABLEN EINFÜGEN
     find_replace_templatesets('forumdisplay_thread', '#'.preg_quote('{$thread[\'multipage\']}').'#', '{$applicationPlus} {$thread[\'multipage\']}');
     find_replace_templatesets('forumdisplay_thread', '#'.preg_quote('{$thread[\'profilelink\']}').'#', '{$application_corrector}{$thread[\'profilelink\']}');
-    find_replace_templatesets('header', '#'.preg_quote('{$awaitingusers}').'#', '{$awaitingusers} {$application_checklist}{$application_checklist_banner}{$application_openAlert}{$application_team_reminder}{$application_deadline_reminder}');
+    find_replace_templatesets('header', '#'.preg_quote('{$awaitingusers}').'#', '{$awaitingusers} {$application_checklist}{$application_checklist_banner}{$application_openAlert}{$application_team_reminder}{$application_deadline_reminder}{$application_expired}');
     find_replace_templatesets('newreply', '#'.preg_quote('<input type="submit" class="button" name="submit').'#', '{$application_correction} <input type="submit" class="button" name="submit"');
     find_replace_templatesets('showthread', '#<tr>\s*<td class="tfoot">#', '{$application_wob}<tr><td class="tfoot">');
     find_replace_templatesets('showthread', '#'.preg_quote('{$thread[\'subject\']}</strong>').'#', '{$thread[\'subject\']}</strong>{$application_corrector}');
 	find_replace_templatesets('showthread_quickreply', '#'.preg_quote('<input type="submit" class="button" value="{$lang->post_reply}"').'#', '{$application_correction} <input type="submit" class="button" value="{$lang->post_reply}"');
-    find_replace_templatesets('editpost', '#'.preg_quote('{$editreason}"').'#', '{$editreason}{$application_hidden}"');
+    find_replace_templatesets('editpost', '#'.preg_quote('{$posticons}"').'#', '{$posticons}{$application_hidden}"');
 }
  
 // Diese Funktion wird aufgerufen, wenn das Plugin deaktiviert wird.
@@ -200,6 +200,7 @@ function application_manager_deactivate(){
 	find_replace_templatesets("header", "#".preg_quote('{$application_openAlert}')."#i", '', 0);
 	find_replace_templatesets("header", "#".preg_quote('{$application_team_reminder}')."#i", '', 0);
 	find_replace_templatesets("header", "#".preg_quote('{$application_deadline_reminder}')."#i", '', 0);
+	find_replace_templatesets("header", "#".preg_quote('{$application_expired}')."#i", '', 0);
 	find_replace_templatesets("newreply", "#".preg_quote('{$application_correction}')."#i", '', 0);
 	find_replace_templatesets("showthread", "#".preg_quote('{$application_wob}')."#i", '', 0);
 	find_replace_templatesets("showthread", "#".preg_quote('{$application_corrector}')."#i", '', 0);
@@ -3464,7 +3465,7 @@ function application_manager_misc() {
 // BANNER
 function application_manager_banner() {
 
-    global $db, $mybb, $lang, $templates, $application_openAlert, $application_team_reminder, $application_deadline_reminder;
+    global $db, $mybb, $lang, $templates, $application_openAlert, $application_team_reminder, $application_deadline_reminder, $application_expired;
 
     // EINSTELLUNGEN
     $applicationgroup = $mybb->settings['application_manager_applicationgroup'];
@@ -3485,6 +3486,7 @@ function application_manager_banner() {
         $application_deadline_reminder = "";
         $application_team_reminder = "";
         $application_openAlert = "";
+        $application_expired = "";
         return;
     }
 
@@ -3760,6 +3762,70 @@ function application_manager_banner() {
     } else {
         $application_openAlert = "";
     }
+
+    // Abgelaufen
+    $todayFormatted = $today->format('Y-m-d');
+
+    // Bewerbungsfristen
+    $get_expiredApplications = $db->query("SELECT uid FROM ".TABLE_PREFIX."application_manager 
+    WHERE application_deadline < '".$todayFormatted."'
+    ");
+    $expiredApplications = $db->num_rows($get_expiredApplications);
+
+    // Korrekturfristen
+    $get_expiredCorrections = $db->query("SELECT uid FROM ".TABLE_PREFIX."application_manager 
+    WHERE correction_deadline < '".$todayFormatted."'
+    ");
+    $expiredCorrections = $db->num_rows($get_expiredCorrections);
+
+    if ($expiredApplications > 0 || $expiredCorrections > 0) {
+
+        if ($expiredApplications == 1 && $expiredCorrections == 0) {
+            // Es ist ingesamt 1 Bewerbungsfrist ausgelaufen.
+            $countWord = "ist";
+            $type = $lang->sprintf($lang->application_manager_banner_teamreminder_expired_applications, '');
+
+            $bannerText = $lang->sprintf($lang->application_manager_banner_teamreminder_expired, $countWord, $expiredApplications, $type);
+        } else if ($expiredApplications == 0 && $expiredCorrections == 1) {
+            // Es ist ingesamt 1 Korrekturfrist ausgelaufen.
+            $countWord = "ist";
+            $type = $lang->sprintf($lang->application_manager_banner_teamreminder_expired_corrections, '');
+
+            $bannerText = $lang->sprintf($lang->application_manager_banner_teamreminder_expired, $countWord, $expiredCorrections, $type);
+        } else if ($expiredApplications > 1 && $expiredCorrections == 0) {
+            // Es sind ingesamt x Bewerbungsfristen ausgelaufen.
+            $countWord = "sind";
+            $type = $lang->sprintf($lang->application_manager_banner_teamreminder_expired_applications, 'en');
+
+            $bannerText = $lang->sprintf($lang->application_manager_banner_teamreminder_expired, $countWord, $expiredApplications, $type);
+        } else if ($expiredApplications == 0 && $expiredCorrections > 1) {
+            // Es sind ingesamt x Korrekturfrist ausgelaufen.
+            $countWord = "sind";
+            $type = $lang->sprintf($lang->application_manager_banner_teamreminder_expired_corrections, 'en');
+
+            $bannerText = $lang->sprintf($lang->application_manager_banner_teamreminder_expired, $countWord, $expiredCorrections, $type);
+        }
+        else {
+            // Es sind ingesamt x Bewerbungsfristen und xx Korrekturfristen ausgelaufen.
+            if ($expiredApplications == 1) {
+                $typeApplications = $lang->sprintf($lang->application_manager_banner_teamreminder_expired_applications, 'en');
+            } else {
+                $typeApplications = $lang->sprintf($lang->application_manager_banner_teamreminder_expired_applications, 'en');
+            }
+
+            if ($expiredCorrections == 1) {
+                $typeCorrections = $lang->sprintf($lang->application_manager_banner_teamreminder_expired_corrections, 'en');
+            } else {
+                $typeCorrections = $lang->sprintf($lang->application_manager_banner_teamreminder_expired_corrections, 'en');
+            }
+
+            $bannerText = $lang->sprintf($lang->application_manager_banner_teamreminder_expired, $expiredApplications, $typeApplications, $expiredCorrections, $typeCorrections);
+        }
+
+        eval("\$application_expired .= \"".$templates->get("applicationmanager_banner")."\";"); 
+    } else {
+        $application_expired = "";
+    }
 }
 
 // NEUES THEMA ERÖFFNEN - BEWERBERFRIST STOPPEN
@@ -4022,6 +4088,8 @@ function application_manager_validate_post(&$dh) {
         if(!$mybb->get_input('correctionTeam')) {
             $dh->set_error($lang->application_manager_validate_team);
         }
+
+        echo "Test:".$mybb->get_input('correctionTeam');
     }
     
     if (array_key_exists($thread['uid'], $userids_array)) {
