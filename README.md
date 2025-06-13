@@ -198,7 +198,7 @@ Alle Templates wurden größtenteils ohne Tabellen-Struktur gecodet. Das Layout 
 
 # Neue Variablen
 - forumdisplay_thread: {$applicationPlus} & {$application_corrector}
-- header: {$application_checklist} & {$application_openAlert} & {$application_team_reminder} & {$application_deadline_reminder}
+- header: {$application_checklist} & {$application_openAlert} & {$application_team_reminder} & {$application_deadline_reminder} & {$application_expired}
 - newreply: {$application_correction}
 - showthread: {$application_wob} & {$application_corrector} & {$application_correction}
 - editpost: {$application_hidden}
