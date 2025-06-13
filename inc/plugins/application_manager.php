@@ -182,7 +182,7 @@ function application_manager_activate(){
     find_replace_templatesets('showthread', '#<tr>\s*<td class="tfoot">#', '{$application_wob}<tr><td class="tfoot">');
     find_replace_templatesets('showthread', '#'.preg_quote('{$thread[\'subject\']}</strong>').'#', '{$thread[\'subject\']}</strong>{$application_corrector}');
 	find_replace_templatesets('showthread_quickreply', '#'.preg_quote('<input type="submit" class="button" value="{$lang->post_reply}"').'#', '{$application_correction} <input type="submit" class="button" value="{$lang->post_reply}"');
-    find_replace_templatesets('editpost', '#'.preg_quote('{$posticons}"').'#', '{$posticons}{$application_hidden}"');
+    find_replace_templatesets('editpost', '#'.preg_quote('{$posticons}').'#', '{$posticons}{$application_hidden}"');
 }
  
 // Diese Funktion wird aufgerufen, wenn das Plugin deaktiviert wird.
