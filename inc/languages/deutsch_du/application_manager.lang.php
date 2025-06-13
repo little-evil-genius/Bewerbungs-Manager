@@ -65,6 +65,10 @@ $l['application_manager_banner_correction_days'] = "Deine Korekturfrist für <b>
 $l['application_manager_banner_teamreminder'] = "Die Bewerbung von <b>{1}</b> wartet seit <b>{2} Tage</b> auf das Feedback zur umgesetzen Korrektur.";
 $l['application_manager_banner_teamreminder_first'] = "Die Bewerbung von <b>{1}</b> wartet seit <b>{2} Tage</b> auf die erste Korrektur.";
 $l['application_manager_banner_teamreminder_open'] = "Die Bewerbung von <b>{1}</b> wartet zur Übernahme ({2}) <b>{3}</b>";
+$l['application_manager_banner_teamreminder_expired'] = "Es {1} ingesamt <b><a href=\"misc.php?action=application_manager\">{2} {3}</a></b> ausgelaufen.";
+$l['application_manager_banner_teamreminder_expired_both'] = "Es sind ingesamt <b><a href=\"misc.php?action=application_manager\">{1} {2} und {3} {4}</a></b> ausgelaufen.";
+$l['application_manager_banner_teamreminder_expired_applications'] = "Bewerbungsfrist{1}";
+$l['application_manager_banner_teamreminder_expired_corrections'] = "Korekturfrist{1}";
 
 $l['application_manager_forumdisplay_button'] = "+";
 $l['application_manager_forumdisplay_corrector'] = "korrigiert: {1}";
