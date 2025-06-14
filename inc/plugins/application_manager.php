@@ -47,7 +47,7 @@ function application_manager_info(){
 		"website"	=> "https://github.com/little-evil-genius/Bewerbungs-Manager",
 		"author"	=> "little.evil.genius",
 		"authorsite"	=> "https://storming-gates.de/member.php?action=profile&uid=1712",
-		"version"	=> "1.0.2",
+		"version"	=> "1.0.3",
 		"compatibility" => "18*"
 	);
 }
@@ -3200,10 +3200,6 @@ function application_manager_misc() {
                 "additionalgroups" => $additionalgroups,    
             );
 
-            if (!empty($mybb->settings['application_manager_wob_date'])) {
-                $updated_user[$mybb->settings['application_manager_wob_date']] = $db->escape_string($today->format("Y-m-d"));
-            }
-
             if($user['usergroup'] == 5 && $mybb->get_input('usergroup') != 5) {
                 if($user['coppauser'] == 1){
                     $updated_user['coppa_user'] = 0;
@@ -3217,6 +3213,15 @@ function application_manager_misc() {
             // Validate the user and get any errors that might have occurred.
             if($userhandler->validate_user()) {
                 $user_info = $userhandler->update_user();
+
+                if (!empty($mybb->settings['application_manager_wob_date'])) {
+                    $wob_field = $mybb->settings['application_manager_wob_date'];
+                    $updated_wob = array(
+                        $wob_field => date('Y-m-d', TIME_NOW)
+                    );
+                    $db->update_query("users", $updated_wob, "uid='".$user['uid']."'");
+                }
+		    
                 if($user['usergroup'] == 5 && $mybb->get_input('usergroup') != 5){
                     $cache->update_awaitingactivation();
                 }
@@ -3445,6 +3450,15 @@ function application_manager_misc() {
                 // Validate the user and get any errors that might have occurred.
                 if($userhandler->validate_user()) {
                     $user_info = $userhandler->update_user();
+
+                    if (!empty($mybb->settings['application_manager_wob_date'])) {
+                        $wob_field = $mybb->settings['application_manager_wob_date'];
+                        $updated_wob = array(
+                            $wob_field => date('Y-m-d', TIME_NOW)
+                        );
+                        $db->update_query("users", $updated_wob, "uid='".$user['uid']."'");
+                    }
+			
                     if($user['usergroup'] == 5 && $mybb->get_input('usergroup') != 5){
                         $cache->update_awaitingactivation();
                     }
