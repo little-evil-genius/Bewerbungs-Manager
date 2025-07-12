@@ -47,7 +47,7 @@ function application_manager_info(){
 		"website"	=> "https://github.com/little-evil-genius/Bewerbungs-Manager",
 		"author"	=> "little.evil.genius",
 		"authorsite"	=> "https://storming-gates.de/member.php?action=profile&uid=1712",
-		"version"	=> "1.0.3",
+		"version"	=> "1.0.4",
 		"compatibility" => "18*"
 	);
 }
@@ -1880,6 +1880,7 @@ function application_manager_admin_manage() {
                 if(empty($errors)) {
                     // Alle Einträge einmal löschen
                     $db->delete_query('application_manager');
+                    $applicationforum = $mybb->settings['application_manager_applicationforum'];
 
                     // Sophie
                     if ($selected_system == "sophie") {
@@ -1908,7 +1909,7 @@ function application_manager_admin_manage() {
                                 'corrector' => (int)$correctorUID,
                             );
 
-                            $checkApplication = $db->fetch_field($db->simple_select("threads", "tid" ,"fid = ".$applicationforum." AND uid = '".$accountID."'"), "tid");
+                            $checkApplication = $db->fetch_field($db->simple_select("threads", "tid" ,"fid = ".$applicationforum." AND uid = '".$uid."'"), "tid");
                             if (!empty($checkApplication)) {
                                 $thread = get_thread($checkApplication);
                                 $startDate = new DateTime();
@@ -2075,7 +2076,7 @@ function application_manager_admin_manage() {
                                 'corrector' => (int)$correctorUID,
                             );
 
-                            $checkApplication = $db->fetch_field($db->simple_select("threads", "tid" ,"fid = ".$applicationforum." AND uid = '".$accountID."'"), "tid");
+                            $checkApplication = $db->fetch_field($db->simple_select("threads", "tid" ,"fid = ".$applicationforum." AND uid = '".$uid."'"), "tid");
                             if (!empty($checkApplication)) {
                                 $thread = get_thread($checkApplication);
                                 $startDate = new DateTime();
