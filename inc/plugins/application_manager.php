@@ -47,7 +47,7 @@ function application_manager_info(){
 		"website"	=> "https://github.com/little-evil-genius/Bewerbungs-Manager",
 		"author"	=> "little.evil.genius",
 		"authorsite"	=> "https://storming-gates.de/member.php?action=profile&uid=1712",
-		"version"	=> "1.0.4",
+		"version"	=> "1.0.5",
 		"compatibility" => "18*"
 	);
 }
@@ -2191,7 +2191,7 @@ function application_manager_admin_update_stylesheet(&$table) {
 // Plugin Update
 function application_manager_admin_update_plugin(&$table) {
 
-    global $db, $mybb, $lang;
+    global $db, $mybb, $lang, $cache;
 	
     $lang->load('rpgstuff_plugin_updates');
 
@@ -2248,6 +2248,36 @@ function application_manager_admin_update_plugin(&$table) {
 
         // Datenbanktabellen & Felder
         application_manager_database();
+
+        // Collation prüfen und korrigieren
+        $charset = 'utf8mb4';
+        $collation = 'utf8mb4_unicode_ci';
+
+        $collation_string = $db->build_create_table_collation();
+        if (preg_match('/CHARACTER SET ([^\s]+)\s+COLLATE ([^\s]+)/i', $collation_string, $matches)) {
+            $charset = $matches[1];
+            $collation = $matches[2];
+        }
+
+        $databaseTables = [
+            "application_manager",
+            "application_checklist_groups",
+            "application_checklist_fields"
+        ];
+
+        foreach ($databaseTables as $databaseTable) {
+            if ($db->table_exists($databaseTable)) {
+                $table = TABLE_PREFIX.$databaseTable;
+
+                $query = $db->query("SHOW TABLE STATUS LIKE '".$db->escape_string($table)."'");
+                $table_status = $db->fetch_array($query);
+                $actual_collation = strtolower($table_status['Collation'] ?? '');
+
+                if (!empty($collation) && $actual_collation !== strtolower($collation)) {
+                    $db->query("ALTER TABLE {$table} CONVERT TO CHARACTER SET {$charset} COLLATE {$collation}");
+                }
+            }
+        }
 
         // TASK LÖSCHEN
         $db->delete_query('tasks', "file='application_manager'");
@@ -4876,7 +4906,7 @@ function application_manager_database() {
             PRIMARY KEY(`aid`),
             KEY `aid` (`aid`)
             )
-            ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci AUTO_INCREMENT=1
+            ENGINE=InnoDB ".$db->build_create_table_collation().";
         ");
     }
 
@@ -4893,9 +4923,10 @@ function application_manager_database() {
             PRIMARY KEY(`gid`),
             KEY `gid` (`gid`)
             )
-            ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci AUTO_INCREMENT=1
+            ENGINE=InnoDB ".$db->build_create_table_collation().";
         ");
     }
+
     // Punkte
     if (!$db->table_exists("application_checklist_fields")) {
         $db->query("CREATE TABLE ".TABLE_PREFIX."application_checklist_fields (
@@ -4910,7 +4941,7 @@ function application_manager_database() {
             PRIMARY KEY(`fid`),
             KEY `fid` (`fid`)
             )
-            ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci AUTO_INCREMENT=1
+            ENGINE=InnoDB ".$db->build_create_table_collation().";
         ");
     }
 }
@@ -5709,12 +5740,43 @@ function application_manager_stylesheet_update() {
 }
 
 // UPDATE CHECK
-function application_manager_is_updated(){
+function application_manager_is_updated() {
+    global $db;
 
-    global $db, $mybb;
+    $charset = 'utf8mb4';
+    $collation = 'utf8mb4_unicode_ci';
 
-    if ($db->table_exists("application_checklist_groups")) {
-        return true;
+    $collation_string = $db->build_create_table_collation();
+    if (preg_match('/CHARACTER SET ([^\s]+)\s+COLLATE ([^\s]+)/i', $collation_string, $matches)) {
+        $charset = strtolower($matches[1]);
+        $collation = strtolower($matches[2]);
     }
-    return false;
+
+    $databaseTables = [
+        "application_manager",
+        "application_checklist_groups",
+        "application_checklist_fields"
+    ];
+
+    foreach ($databaseTables as $table_name) {
+        if (!$db->table_exists($table_name)) {
+            return false;
+        }
+
+        $full_table_name = TABLE_PREFIX . $table_name;
+
+        $query = $db->query("
+            SELECT TABLE_COLLATION 
+            FROM information_schema.TABLES 
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '".$db->escape_string($full_table_name)."'
+        ");
+        $result = $db->fetch_array($query);
+        $actual_collation = strtolower($result['TABLE_COLLATION'] ?? '');
+
+        if ($actual_collation !== $collation) {
+            return false;
+        }
+    }
+
+    return true;
 }
