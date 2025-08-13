@@ -47,7 +47,7 @@ function application_manager_info(){
 		"website"	=> "https://github.com/little-evil-genius/Bewerbungs-Manager",
 		"author"	=> "little.evil.genius",
 		"authorsite"	=> "https://storming-gates.de/member.php?action=profile&uid=1712",
-		"version"	=> "1.0.5",
+		"version"	=> "1.0.6",
 		"compatibility" => "18*"
 	);
 }
@@ -3524,6 +3524,7 @@ function application_manager_banner() {
     $period_extension_days = $mybb->settings['application_manager_control_period_extension_days'];
     $period_extension_max = $mybb->settings['application_manager_control_period_extension_max'];
     $period_alert = $mybb->settings['application_manager_control_period_alert'];
+    $control_correction = $mybb->settings['application_manager_control_correction'];
     $correction_alert = $mybb->settings['application_manager_control_correction_alert'];
     $correction_extension = $mybb->settings['application_manager_control_correction_extension'];
     $correction_extension_days = $mybb->settings['application_manager_control_correction_extension_days'];
@@ -3723,51 +3724,61 @@ function application_manager_banner() {
                 $StartDate->setTime(0, 0, 0);
                 $diff = $StartDate->diff($today);
                 $daysWaiting = (int)$diff->format('%a');
+
+                $postCheck = $db->fetch_field($db->query("SELECT * FROM ".TABLE_PREFIX."posts p
+                WHERE p.uid IN (".$uid_list.")
+                AND p.tid = (SELECT tid FROM ".TABLE_PREFIX."threads WHERE uid = ".$uid." AND fid = '".$applicationforum."')
+                "), 'pid');
                 
                 $bannerText = $lang->sprintf($lang->application_manager_banner_teamreminder_first, $username, $daysWaiting);
-    
-                eval("\$application_team_reminder .= \"".$templates->get("applicationmanager_banner")."\";"); 
+
+                if(!$postCheck) {
+                    eval("\$application_team_reminder .= \"".$templates->get("applicationmanager_banner")."\";"); 
+                } else {
+                    $application_team_reminder = "";
+                }
             }
         }
 
-        // Rückmeldung
-        $get_teamReminder = $db->query("SELECT * FROM ".TABLE_PREFIX."application_manager a
-        WHERE a.corrector IN (".$uid_list.")
-        AND a.correction_team = 1
-        AND DATEDIFF(NOW(), correction_dateline) >= ".$team_alert."
-        ORDER BY a.correction_dateline ASC
-        ");
-        $teamReminder = $db->num_rows($get_teamReminder);
+        if ($control_correction == 1) {
+            // Rückmeldung
+            $get_teamReminder = $db->query("SELECT * FROM ".TABLE_PREFIX."application_manager a
+            WHERE a.corrector IN (".$uid_list.")
+            AND a.correction_team = 1
+            AND DATEDIFF(NOW(), correction_dateline) >= ".$team_alert."
+            ORDER BY a.correction_dateline ASC
+            ");
+            $teamReminder = $db->num_rows($get_teamReminder);
 
-        if ($teamReminder > 0) {
+            if ($teamReminder > 0) {
 
-            // $application_team_reminder = "";
-            while ($team = $db->fetch_array($get_teamReminder)) {
+                // $application_team_reminder = "";    
+                while ($team = $db->fetch_array($get_teamReminder)) {
 
-                // Leer laufen lassen
-                $aid = "";
-                $uid = "";
-                $username = "";
-                $StartDate = "";
-                $daysWaiting = "";
-                $correctorPlus = "";
-                $bannerText = "";
+                    // Leer laufen lassen
+                    $aid = "";
+                    $uid = "";
+                    $username = "";
+                    $StartDate = "";
+                    $daysWaiting = "";
+                    $correctorPlus = "";
+                    $bannerText = "";
     
-                // Mit Infos füllen
-                $aid = $team['aid'];
-                $uid = $team['uid'];
-                $username = build_profile_link(get_user($uid)['username'], $uid);
-                $StartDate = new DateTime($team['correction_dateline']);
-                $StartDate->setTime(0, 0, 0);
-                $diff = $StartDate->diff($today);
-                $daysWaiting = (int)$diff->format('%a');
-                
-                $bannerText = $lang->sprintf($lang->application_manager_banner_teamreminder, $username, $daysWaiting);
+                    // Mit Infos füllen
+                    $aid = $team['aid'];
+                    $uid = $team['uid'];
+                    $username = build_profile_link(get_user($uid)['username'], $uid);
+                    $StartDate = new DateTime($team['correction_dateline']);
+                    $StartDate->setTime(0, 0, 0);
+                    $diff = $StartDate->diff($today);
+                    $daysWaiting = (int)$diff->format('%a');                
+
+                    $bannerText = $lang->sprintf($lang->application_manager_banner_teamreminder, $username, $daysWaiting);
     
-                eval("\$application_team_reminder .= \"".$templates->get("applicationmanager_banner")."\";"); 
+                    eval("\$application_team_reminder .= \"".$templates->get("applicationmanager_banner")."\";"); 
+                }
             }
         }
-
     } else {
         $application_team_reminder = "";
     }
@@ -4136,8 +4147,6 @@ function application_manager_validate_post(&$dh) {
         if(!$mybb->get_input('correctionTeam')) {
             $dh->set_error($lang->application_manager_validate_team);
         }
-
-        echo "Test:".$mybb->get_input('correctionTeam');
     }
     
     if (array_key_exists($thread['uid'], $userids_array)) {
@@ -5786,5 +5795,3 @@ function application_manager_is_updated() {
 
     return true;
 }
-
-
